@@ -28,3 +28,7 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+/.idea/deployment.xml
+/.idea/copilot.data.migration.ask2agent.xml
+/.idea/sshConfigs.xml
+/.idea/webServers.xml
