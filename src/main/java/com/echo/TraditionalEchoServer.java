@@ -40,6 +40,8 @@ public class TraditionalEchoServer {
                 out.newLine();
                 out.flush();
                 System.out.println("收到消息: " + getLine + " 已返回");
+
+                if ("bye".equalsIgnoreCase(getLine)) break;
             }
         } catch (IOException e) {
             System.out.println("客户端链接中断");

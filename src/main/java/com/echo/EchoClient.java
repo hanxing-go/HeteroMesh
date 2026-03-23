@@ -11,7 +11,7 @@ public class EchoClient {
     public static void main(String[] args) {
         int connectTimeMax = 5000;
         // 1. 首先需要有一个ip地址与端口 建立链接
-        String ipSever = "139.155.150.3";
+        String ipSever = "127.0.0.1";
         int port = 8888;
         try {
             Socket socket = new Socket();
