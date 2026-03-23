@@ -17,14 +17,14 @@ public class VirtualThreadEchoServer {
             while (true) {
                 Socket clientSocket = socket.accept();
                 System.out.println("客户端已连接: " + clientSocket.getInetAddress());
-                
+
+                // 3. 为客户端分配一个线程，来处理任务
                 virtualService.submit(() -> handleClient(clientSocket));
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        // 3. 为客户端创建一个线程，来处理任务
-        
+
     }
 
     private static void handleClient(Socket clientSocket) {
