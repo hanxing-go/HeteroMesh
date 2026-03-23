@@ -32,3 +32,11 @@ bin/
 /.idea/copilot.data.migration.ask2agent.xml
 /.idea/sshConfigs.xml
 /.idea/webServers.xml
+
+### Maven 编译产生的目录（里面全是编译后的 class 文件和打包好的 jar 包） ###
+target/
+
+### IDEA 自动生成的配置文件（可选，如果你想保持仓库干净） ###
+*.iml
+.idea/
+
