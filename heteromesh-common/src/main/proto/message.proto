@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package com.heteromesh.protocol;
+
+option java_multiple_files = true;
+option java_package = "com.heteromesh.protocol.proto";
+
+// 消息类型枚举
+enum ProtoMessageType {
+  PING = 0;
+  PONG = 1;
+  TASK_REQUEST = 16;
+  TASK_RESPONSE = 17;
+  REGISTER = 32;
+  REGISTER_ACK = 33;
+  HEARTBEAT = 48;
+  HEARTBEAT_ACK = 49;
+}
+
+// 统一消息体
+message ProtoMessage {
+  ProtoMessageType type = 1;
+  string request_id = 2;   // RPC 请求ID，用于请求-响应匹配
+  string body = 3;         // JSON 字符串，承载具体业务数据
+}

@@ -40,3 +40,9 @@ target/
 *.iml
 .idea/
 
+### Claude Code ###
+.claude/
+
+### Logs ###
+logs/
+
