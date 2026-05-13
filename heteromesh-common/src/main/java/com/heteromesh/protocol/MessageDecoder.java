@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 
 public class MessageDecoder extends LengthFieldBasedFrameDecoder {
     public MessageDecoder() {
-        super(1024 * 1024, 6, 4, 0, 10);
+        super(1024 * 1024, 6, 4, 0, 0);
     }
     @Override
     protected Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {

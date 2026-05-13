@@ -62,7 +62,7 @@ HeteroMesh/
 
 - [x] 多模块项目搭建
 - [x] 自定义二进制协议 + Message 序列化 (JSON + Protobuf)
-- [ ] Netty 编解码器 + Server/Client
+- [x] Netty 编解码器 + Server/Client + 集成测试
 - [ ] 心跳机制 + 异常处理
 - [ ] RPC 骨架
 - [ ] Controller 节点注册 + 一致性哈希调度
