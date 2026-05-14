@@ -4,8 +4,12 @@ import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
+import com.heteromesh.transport.RpcClient;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -32,6 +36,7 @@ public class WorkerClient {
                     .handler((new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
+                            RpcClient rpcClient = new RpcClient(socketChannel);
                             socketChannel.pipeline()
                                     .addLast(
                                             // 自然处理
@@ -43,7 +48,7 @@ public class WorkerClient {
                                             new MessageEncoder(),
                                             new HeartbeatHandler(),
                                             // 业务代码
-                                            new ClientHandler()
+                                            new ClientHandler(rpcClient)
                                     );
                         }
                     }));
