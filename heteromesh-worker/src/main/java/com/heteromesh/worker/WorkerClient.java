@@ -2,11 +2,16 @@ package com.heteromesh.worker;
 
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
+import com.heteromesh.transport.ExceptionHandler;
+import com.heteromesh.transport.HeartbeatHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.timeout.IdleStateHandler;
+
+import java.util.concurrent.TimeUnit;
 
 public class WorkerClient {
     private String host;
@@ -29,9 +34,14 @@ public class WorkerClient {
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel.pipeline()
                                     .addLast(
+                                            // 自然处理
+                                            new ExceptionHandler(),
+                                            // 心跳检测
+                                            new IdleStateHandler(0,0,10, TimeUnit.SECONDS),
                                             //解包和拆包
                                             new MessageDecoder(),
                                             new MessageEncoder(),
+                                            new HeartbeatHandler(),
                                             // 业务代码
                                             new ClientHandler()
                                     );
