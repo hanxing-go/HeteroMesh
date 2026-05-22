@@ -184,6 +184,16 @@ mvn test -pl heteromesh-common -Dtest=ProtocolBenchmark
 
 ## 参考项目
 
-- [WXY-RPC](https://github.com/leiichen/wxy-rpc) — Netty 自定义 RPC 框架
-- [Hive](https://github.com/VakeDomen/HiveCore) — 分布式 Ollama 推理调度
-- [ruyuan-dfs](https://github.com/LCB14/ruyuan-dfs) — 分布式文件存储系统
+HeteroMesh 是一个教学项目，不直接对标工业级产品，但设计时参考了以下开源项目的核心思想：
+
+| 领域 | 参考项目 | Stars | 借鉴了什么 |
+|------|---------|-------|-----------|
+| RPC 框架 | [Apache Dubbo](https://github.com/apache/dubbo) | 40k+ | SPI 插件机制、服务注册/发现、负载均衡策略、RPC 调用模型 |
+| RPC 框架 | [SOFARPC](https://github.com/sofastack/sofa-rpc) | 3.5k+ | 拦截器链、连接池、容错策略设计 |
+| 分布式调度 | [XXL-JOB](https://github.com/xuxueli/xxl-job) | 27k+ | Controller/Worker 架构、任务路由、心跳维护 |
+| 注册中心 | [Nacos](https://github.com/alibaba/nacos) | 30k+ | 服务实例模型、健康检查、事件通知机制 |
+| 负载均衡 | [Spring Cloud LoadBalancer](https://spring.io/projects/spring-cloud) | — | 随机/轮询/加权/一致性哈希策略接口设计 |
+| 熔断限流 | [Sentinel](https://github.com/alibaba/sentinel) | 22k+ | 熔断器三态状态机、滑动窗口限流、令牌桶算法 |
+| 序列化 | [Kryo](https://github.com/EsotericSoftware/kryo) | 6k+ | 高性能二进制序列化、varint 编码 |
+| 网络通信 | [Netty](https://github.com/netty/netty) | 33k+ | 自定义协议编解码、Pipeline 模型、零拷贝 |
+| GPU 推理 | [vLLM](https://github.com/vllm-project/vllm) | 40k+ | 推理调度思想、Worker 管理（架构层面参考，实现层面非对标） |
