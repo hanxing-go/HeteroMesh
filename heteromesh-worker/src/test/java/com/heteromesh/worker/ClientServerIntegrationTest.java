@@ -3,6 +3,8 @@ package com.heteromesh.worker;
 import com.heteromesh.protocol.Message;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
+import com.heteromesh.serializer.BinarySerializer;
+import com.heteromesh.serializer.Serializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -32,6 +34,7 @@ class ClientServerIntegrationTest {
         EventLoopGroup clientGroup = new NioEventLoopGroup(1);
 
         try {
+            Serializer serializer = new BinarySerializer();
             // 1. 启动测试服务器（管道与 HeteroMeshServer 一致）
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -40,8 +43,8 @@ class ClientServerIntegrationTest {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
                                         protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
@@ -70,8 +73,8 @@ class ClientServerIntegrationTest {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
                                         public void channelActive(ChannelHandlerContext ctx) {
@@ -117,6 +120,7 @@ class ClientServerIntegrationTest {
         EventLoopGroup clientGroup = new NioEventLoopGroup(1);
 
         try {
+            Serializer serializer = new BinarySerializer();
             // 服务器：收到后原样回复
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -125,8 +129,8 @@ class ClientServerIntegrationTest {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
                                         protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
@@ -148,8 +152,8 @@ class ClientServerIntegrationTest {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
                                         public void channelActive(ChannelHandlerContext ctx) {

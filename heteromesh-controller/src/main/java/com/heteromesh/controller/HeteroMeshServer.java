@@ -2,6 +2,8 @@ package com.heteromesh.controller;
 
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
+import com.heteromesh.serializer.BinarySerializer;
+import com.heteromesh.serializer.Serializer;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import io.netty.bootstrap.ServerBootstrap;
@@ -11,9 +13,11 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class HeteroMeshServer {
     private int port;// 监听的窗口
 
@@ -22,12 +26,16 @@ public class HeteroMeshServer {
     }
 
     public void run() throws Exception {
+
         //多线程时间循环，NioEventLoopGroup是一个多线程实践循环，负责I/0操作。
         // 两个线程组，接收客户端连接，处理连接的数据读写
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workGroup = new NioEventLoopGroup(4);
 
         try {
+            Serializer serializer = new BinarySerializer();
+            // 启动服务
+            log.info("启动服务");
             new ServerBootstrap()
                     .group(bossGroup, workGroup)
                     .channel(NioServerSocketChannel.class)
@@ -41,8 +49,8 @@ public class HeteroMeshServer {
                                     //心跳检测
                                     new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS),
                                     //1. 切包+解码+编码
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     // 心跳处理
                                     new HeartbeatHandler(),
                                     // 2. 业务处理
@@ -58,6 +66,7 @@ public class HeteroMeshServer {
         } finally {
             bossGroup.shutdownGracefully();
             workGroup.shutdownGracefully();
+            log.info("服务关闭");
         }
     }
 }

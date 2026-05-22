@@ -1,6 +1,8 @@
 package com.heteromesh.transport;
 
 import com.heteromesh.protocol.*;
+import com.heteromesh.serializer.BinarySerializer;
+import com.heteromesh.serializer.Serializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -28,6 +30,7 @@ class HeartbeatIntegrationTest {
         CountDownLatch serverReceivedRequest = new CountDownLatch(1);
 
         try {
+            Serializer serializer = new BinarySerializer();
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -37,8 +40,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -67,8 +70,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -111,6 +114,8 @@ class HeartbeatIntegrationTest {
         CountDownLatch serverChannelClosed = new CountDownLatch(1);
 
         try {
+            Serializer serializer = new BinarySerializer();
+
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -120,8 +125,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -145,8 +150,8 @@ class HeartbeatIntegrationTest {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
                                         protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
@@ -179,6 +184,8 @@ class HeartbeatIntegrationTest {
         AtomicReference<String> echoResult = new AtomicReference<>();
 
         try {
+            Serializer serializer = new BinarySerializer();
+
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -188,8 +195,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -216,8 +223,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(),
-                                    new MessageEncoder(),
+                                    new MessageDecoder(serializer),
+                                    new MessageEncoder(serializer),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override

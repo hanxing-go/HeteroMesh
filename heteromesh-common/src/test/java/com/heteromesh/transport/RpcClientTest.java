@@ -1,6 +1,8 @@
 package com.heteromesh.transport;
 
 import com.heteromesh.protocol.*;
+import com.heteromesh.serializer.BinarySerializer;
+import com.heteromesh.serializer.Serializer;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
@@ -79,10 +81,11 @@ class RpcClientTest {
 
     @Test
     void shouldCompleteFutureViaPipelineIntegration() throws Exception {
+        Serializer serializer = new BinarySerializer();
         // 先创建 Channel（只有编解码器）
         EmbeddedChannel channel = new EmbeddedChannel(
-                new MessageDecoder(),
-                new MessageEncoder()
+                new MessageDecoder(serializer),
+                new MessageEncoder(serializer)
         );
 
         RpcClient rpcClient = new RpcClient(channel);

@@ -2,10 +2,12 @@ package com.heteromesh.transport;
 
 import com.heteromesh.protocol.Message;
 import io.netty.channel.Channel;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 public class RpcClient {
 
     // 「待取餐」登记本：requestId → 对应的空盒子
@@ -46,7 +48,8 @@ public class RpcClient {
         if (future != null) {
             future.complete(response);
         } else {
-            System.err.println("[RpcClient] 收到未知响应，requestId=" + response.getRequestId());
+//            System.err.println("[RpcClient] 收到未知响应，requestId=" + response.getRequestId());
+            log.warn("[RpcClient] 收到未知响应，requestId={}", response.getRequestId());
         }
     }
 }

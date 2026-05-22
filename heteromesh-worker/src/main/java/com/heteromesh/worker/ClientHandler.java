@@ -5,8 +5,9 @@ import com.heteromesh.protocol.MessageType;
 import com.heteromesh.transport.RpcClient;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import lombok.extern.slf4j.Slf4j;
 
-
+@Slf4j
 public class ClientHandler extends SimpleChannelInboundHandler<Message> {
 
     private final RpcClient rpcClient;
@@ -20,7 +21,8 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
         // 用rpcClient.call()
         rpcClient.call("你好")
                 .thenAccept(response -> {
-                    System.out.println(response.getBody());
+//                    System.out.println(response.getBody());
+                    log.info("RPC回复:{}", response.getBody());
                 });
     }
 
@@ -29,7 +31,8 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
         if (msg.getType() == MessageType.TASK_RESPONSE) {
             rpcClient.onResponse(msg);
         } else {
-            System.out.println("收到回复:" + msg.getBody());
+//            System.out.println("收到回复:" + msg.getBody());
+            log.debug("收到回复: {}",msg.getBody());
         }
     }
 }

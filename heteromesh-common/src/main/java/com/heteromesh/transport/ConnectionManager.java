@@ -1,6 +1,7 @@
 package com.heteromesh.transport;
 
 import io.netty.channel.Channel;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,16 +12,19 @@ import java.util.concurrent.ConcurrentHashMap;
  * 当前（第 3 课）：用 Channel.id 作为 key 管理连接
  * 未来（第 6 课）：切换为 getByNodeId(String nodeId)，nodeId 来自 Worker 注册消息
  */
+@Slf4j
 public class ConnectionManager {
 
     private final ConcurrentHashMap<String, Channel> channels = new ConcurrentHashMap<>();
 
     public void add(Channel channel) {
         channels.put(channel.id().asShortText(), channel);
+        log.info("添加连接: {}",channel.id().asShortText());
     }
 
     public void remove(Channel channel) {
         channels.remove(channel.id().asShortText());
+        log.info("移除连接: {}",channel.id().asShortText());
     }
 
     public Channel get(String channelId) {

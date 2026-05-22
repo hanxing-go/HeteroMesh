@@ -2,6 +2,8 @@ package com.heteromesh.worker;
 
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
+import com.heteromesh.serializer.BinarySerializer;
+import com.heteromesh.serializer.Serializer;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import com.heteromesh.transport.RpcClient;
@@ -14,9 +16,11 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class WorkerClient {
     private String host;
     private int port;
@@ -29,6 +33,8 @@ public class WorkerClient {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
         try {
+            Serializer serializer = new BinarySerializer();
+            log.info("连接启动");
             Bootstrap b = new Bootstrap()
                     .group(workerGroup)
                     .channel(NioSocketChannel.class)
@@ -44,8 +50,8 @@ public class WorkerClient {
                                             // 心跳检测
                                             new IdleStateHandler(0,0,10, TimeUnit.SECONDS),
                                             //解包和拆包
-                                            new MessageDecoder(),
-                                            new MessageEncoder(),
+                                            new MessageDecoder(serializer),
+                                            new MessageEncoder(serializer),
                                             new HeartbeatHandler(),
                                             // 业务代码
                                             new ClientHandler(rpcClient)
@@ -59,6 +65,7 @@ public class WorkerClient {
             // 等待连接关闭
             f.channel().closeFuture().sync();
         } finally {
+            log.info("连接断开");
             workerGroup.shutdownGracefully();
         }
     }
