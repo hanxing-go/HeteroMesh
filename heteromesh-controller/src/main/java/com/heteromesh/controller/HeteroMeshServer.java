@@ -2,8 +2,8 @@ package com.heteromesh.controller;
 
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
-import com.heteromesh.serializer.BinarySerializer;
 import com.heteromesh.serializer.Serializer;
+import com.heteromesh.serializer.SerializerFactory;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import io.netty.bootstrap.ServerBootstrap;
@@ -33,7 +33,7 @@ public class HeteroMeshServer {
         EventLoopGroup workGroup = new NioEventLoopGroup(4);
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getDefault();
             // 启动服务
             log.info("启动服务");
             new ServerBootstrap()

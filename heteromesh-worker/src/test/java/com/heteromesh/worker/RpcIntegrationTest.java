@@ -1,8 +1,8 @@
 package com.heteromesh.worker;
 
 import com.heteromesh.protocol.*;
-import com.heteromesh.serializer.BinarySerializer;
 import com.heteromesh.serializer.Serializer;
+import com.heteromesh.serializer.SerializerFactory;
 import com.heteromesh.transport.RpcClient;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -33,7 +33,7 @@ class RpcIntegrationTest {
         CountDownLatch latch = new CountDownLatch(1);
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getSerializer("binary");
             // 启动 Controller 端（Server）
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -124,7 +124,7 @@ class RpcIntegrationTest {
         CountDownLatch latch = new CountDownLatch(3);
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getSerializer("binary");
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)

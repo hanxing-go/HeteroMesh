@@ -1,0 +1,2 @@
+json=com.heteromesh.serializer.JsonSerializer
+binary=com.heteromesh.serializer.BinarySerializer

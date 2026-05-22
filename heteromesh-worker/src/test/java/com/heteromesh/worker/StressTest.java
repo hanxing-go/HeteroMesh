@@ -4,8 +4,8 @@ import com.heteromesh.protocol.Message;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
 import com.heteromesh.protocol.MessageType;
-import com.heteromesh.serializer.BinarySerializer;
 import com.heteromesh.serializer.Serializer;
+import com.heteromesh.serializer.SerializerFactory;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import com.heteromesh.transport.RpcClient;
@@ -36,7 +36,7 @@ public class StressTest {
 
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getSerializer("binary");
             // 启动 Controller 端（Server）
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)

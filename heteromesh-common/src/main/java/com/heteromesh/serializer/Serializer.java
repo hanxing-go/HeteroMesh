@@ -2,7 +2,9 @@ package com.heteromesh.serializer;
 
 
 import com.heteromesh.protocol.Message;
+import com.heteromesh.spi.SPI;
 
+@SPI("json")
 public interface Serializer {
     // 编码：Message → 字节数组
     byte[] serialize(Message message);

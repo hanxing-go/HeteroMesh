@@ -3,8 +3,8 @@ package com.heteromesh.worker;
 import com.heteromesh.protocol.Message;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
-import com.heteromesh.serializer.BinarySerializer;
 import com.heteromesh.serializer.Serializer;
+import com.heteromesh.serializer.SerializerFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -34,7 +34,7 @@ class ClientServerIntegrationTest {
         EventLoopGroup clientGroup = new NioEventLoopGroup(1);
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getSerializer("binary");
             // 1. 启动测试服务器（管道与 HeteroMeshServer 一致）
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -120,7 +120,7 @@ class ClientServerIntegrationTest {
         EventLoopGroup clientGroup = new NioEventLoopGroup(1);
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getSerializer("binary");
             // 服务器：收到后原样回复
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)

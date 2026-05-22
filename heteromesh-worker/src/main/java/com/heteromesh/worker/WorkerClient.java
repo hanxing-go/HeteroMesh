@@ -2,8 +2,8 @@ package com.heteromesh.worker;
 
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
-import com.heteromesh.serializer.BinarySerializer;
 import com.heteromesh.serializer.Serializer;
+import com.heteromesh.serializer.SerializerFactory;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import com.heteromesh.transport.RpcClient;
@@ -33,7 +33,7 @@ public class WorkerClient {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getDefault();
             log.info("连接启动");
             Bootstrap b = new Bootstrap()
                     .group(workerGroup)

@@ -1,8 +1,8 @@
 package com.heteromesh.transport;
 
 import com.heteromesh.protocol.*;
-import com.heteromesh.serializer.BinarySerializer;
 import com.heteromesh.serializer.Serializer;
+import com.heteromesh.serializer.SerializerFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -30,7 +30,7 @@ class HeartbeatIntegrationTest {
         CountDownLatch serverReceivedRequest = new CountDownLatch(1);
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getSerializer("binary");
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -114,7 +114,7 @@ class HeartbeatIntegrationTest {
         CountDownLatch serverChannelClosed = new CountDownLatch(1);
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getSerializer("binary");
 
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -184,7 +184,7 @@ class HeartbeatIntegrationTest {
         AtomicReference<String> echoResult = new AtomicReference<>();
 
         try {
-            Serializer serializer = new BinarySerializer();
+            Serializer serializer = SerializerFactory.getSerializer("binary");
 
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
