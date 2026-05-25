@@ -1,16 +1,16 @@
 package com.heteromesh.protocol;
 
 import com.heteromesh.serializer.Serializer;
+import com.heteromesh.serializer.SerializerRouter;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 
 public class MessageDecoder extends LengthFieldBasedFrameDecoder {
-    private final Serializer serializer;
-    public MessageDecoder(Serializer serializer) {
-        super(1024 * 1024, 6, 4, 0, 0);
-        this.serializer = serializer;
+    public MessageDecoder() {
+        super(1024 * 1024, 7, 4, 0, 0);
+
     }
     @Override
     protected Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
@@ -25,13 +25,16 @@ public class MessageDecoder extends LengthFieldBasedFrameDecoder {
         //2. 手动读取字节头
         frame.readInt();// 魔数
         frame.readByte();// 版本
+        byte serializerCode = frame.readByte();//读取序列化标识
         // 读取类型
         frame.readByte();
         int length = frame.readInt();
         // 读取内容
         byte[] bytes = new byte[length];
         frame.readBytes(bytes);
-        return serializer.deserialize(bytes);
+
+        Serializer s = SerializerRouter.getByCode(serializerCode);
+        return s.deserialize(bytes);
 
     }
 }

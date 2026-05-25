@@ -71,6 +71,12 @@
             <version>5.11.4</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- SnakeYMAL-->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

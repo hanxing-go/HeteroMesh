@@ -2,8 +2,6 @@ package com.heteromesh.worker;
 
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
-import com.heteromesh.serializer.Serializer;
-import com.heteromesh.serializer.SerializerFactory;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import com.heteromesh.transport.RpcClient;
@@ -33,7 +31,6 @@ public class WorkerClient {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
         try {
-            Serializer serializer = SerializerFactory.getDefault();
             log.info("连接启动");
             Bootstrap b = new Bootstrap()
                     .group(workerGroup)
@@ -50,8 +47,8 @@ public class WorkerClient {
                                             // 心跳检测
                                             new IdleStateHandler(0,0,10, TimeUnit.SECONDS),
                                             //解包和拆包
-                                            new MessageDecoder(serializer),
-                                            new MessageEncoder(serializer),
+                                            new MessageDecoder(),
+                                            new MessageEncoder(),
                                             new HeartbeatHandler(),
                                             // 业务代码
                                             new ClientHandler(rpcClient)

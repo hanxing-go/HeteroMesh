@@ -1,8 +1,6 @@
 package com.heteromesh.worker;
 
 import com.heteromesh.protocol.*;
-import com.heteromesh.serializer.Serializer;
-import com.heteromesh.serializer.SerializerFactory;
 import com.heteromesh.transport.RpcClient;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -33,7 +31,6 @@ class RpcIntegrationTest {
         CountDownLatch latch = new CountDownLatch(1);
 
         try {
-            Serializer serializer = SerializerFactory.getSerializer("binary");
             // 启动 Controller 端（Server）
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -44,8 +41,8 @@ class RpcIntegrationTest {
                             ch.pipeline().addLast(
                                     new com.heteromesh.transport.ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new com.heteromesh.transport.HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -75,8 +72,8 @@ class RpcIntegrationTest {
                             ch.pipeline().addLast(
                                     new com.heteromesh.transport.ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new com.heteromesh.transport.HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -124,7 +121,6 @@ class RpcIntegrationTest {
         CountDownLatch latch = new CountDownLatch(3);
 
         try {
-            Serializer serializer = SerializerFactory.getSerializer("binary");
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -134,8 +130,8 @@ class RpcIntegrationTest {
                             ch.pipeline().addLast(
                                     new com.heteromesh.transport.ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new com.heteromesh.transport.HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -163,8 +159,8 @@ class RpcIntegrationTest {
                             ch.pipeline().addLast(
                                     new com.heteromesh.transport.ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new com.heteromesh.transport.HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override

@@ -2,8 +2,6 @@ package com.heteromesh.controller;
 
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
-import com.heteromesh.serializer.Serializer;
-import com.heteromesh.serializer.SerializerFactory;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import io.netty.bootstrap.ServerBootstrap;
@@ -33,7 +31,6 @@ public class HeteroMeshServer {
         EventLoopGroup workGroup = new NioEventLoopGroup(4);
 
         try {
-            Serializer serializer = SerializerFactory.getDefault();
             // 启动服务
             log.info("启动服务");
             new ServerBootstrap()
@@ -49,8 +46,8 @@ public class HeteroMeshServer {
                                     //心跳检测
                                     new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS),
                                     //1. 切包+解码+编码
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     // 心跳处理
                                     new HeartbeatHandler(),
                                     // 2. 业务处理

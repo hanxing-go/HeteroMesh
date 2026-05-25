@@ -4,8 +4,6 @@ import com.heteromesh.protocol.Message;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
 import com.heteromesh.protocol.MessageType;
-import com.heteromesh.serializer.Serializer;
-import com.heteromesh.serializer.SerializerFactory;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import com.heteromesh.transport.RpcClient;
@@ -36,7 +34,6 @@ public class StressTest {
 
 
         try {
-            Serializer serializer = SerializerFactory.getSerializer("binary");
             // 启动 Controller 端（Server）
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -47,8 +44,8 @@ public class StressTest {
                             ch.pipeline().addLast(
                                     new com.heteromesh.transport.ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new com.heteromesh.transport.HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -81,8 +78,8 @@ public class StressTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new HeartbeatHandler(),
                                     // 4. 循环 1000 次 call("msg-" + i)，每次 thenAccept 里 latch.countDown()
                                     new SimpleChannelInboundHandler<Message>() {

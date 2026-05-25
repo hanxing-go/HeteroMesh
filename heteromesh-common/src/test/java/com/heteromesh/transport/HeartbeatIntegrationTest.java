@@ -1,8 +1,6 @@
 package com.heteromesh.transport;
 
 import com.heteromesh.protocol.*;
-import com.heteromesh.serializer.Serializer;
-import com.heteromesh.serializer.SerializerFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -30,7 +28,6 @@ class HeartbeatIntegrationTest {
         CountDownLatch serverReceivedRequest = new CountDownLatch(1);
 
         try {
-            Serializer serializer = SerializerFactory.getSerializer("binary");
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -40,8 +37,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -70,8 +67,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -114,7 +111,6 @@ class HeartbeatIntegrationTest {
         CountDownLatch serverChannelClosed = new CountDownLatch(1);
 
         try {
-            Serializer serializer = SerializerFactory.getSerializer("binary");
 
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -125,8 +121,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -150,8 +146,8 @@ class HeartbeatIntegrationTest {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
                                         protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
@@ -184,7 +180,6 @@ class HeartbeatIntegrationTest {
         AtomicReference<String> echoResult = new AtomicReference<>();
 
         try {
-            Serializer serializer = SerializerFactory.getSerializer("binary");
 
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -195,8 +190,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
@@ -223,8 +218,8 @@ class HeartbeatIntegrationTest {
                             ch.pipeline().addLast(
                                     new ExceptionHandler(),
                                     new IdleStateHandler(0, 0, 2, TimeUnit.SECONDS),
-                                    new MessageDecoder(serializer),
-                                    new MessageEncoder(serializer),
+                                    new MessageDecoder(),
+                                    new MessageEncoder(),
                                     new HeartbeatHandler(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override

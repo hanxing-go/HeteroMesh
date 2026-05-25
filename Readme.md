@@ -86,7 +86,7 @@ HeteroMesh/
 
 ---
 
-## 学习路线 (21 课)
+## 学习路线 (19 课)
 
 ### ✅ 阶段 0：通信引擎 (已完成)
 
@@ -99,52 +99,50 @@ HeteroMesh/
 | 4 | RPC 骨架 (CompletableFuture + requestId) | ✅ |
 | 5 | 里程碑 1：通信引擎整合 + 序列化性能对比 | ✅ |
 
-### ✅ 阶段 1：基础设施重构 (进行中)
+### ✅ 阶段 1：基础设施重构 (已完成)
 
 | 课 | 内容 | 关键产出 | 状态 |
 |----|------|----------|------|
 | 1 | SLF4J 日志迁移 + 包结构整理 | 统一日志输出，8 个类改造 | ✅ |
 | 2 | Serializer 接口 + ServiceRegistry 接口 | 6 个新文件，编解码器解耦 | ✅ |
-| 3 | SPI 插件机制 + SerializerFactory | SpiExtensionLoader, @SPI, META-INF/services | 🔜 |
-| 4 | Kryo 序列化器 + JMH 三方案对比 | KryoSerializer, SerializerBenchmark | 🔜 |
-| 5 | 序列化策略路由 + 配置 | SerializerRouter, SerializationConfig | 🔜 |
+| 3 | SPI 插件机制 + SerializerFactory | SpiExtensionLoader, @SPI, META-INF/services | ✅ |
+| 4 | 序列化策略路由 + YAML 配置 | SerializerRouter, SerializerCode, ConfigLoader | ✅ |
 
-### ⬜ 阶段 2：注册中心 + 负载均衡
+### 🔜 阶段 2：注册中心 + 节点管理 (进行中)
 
-| 课 | 内容 | 关键产出 |
-|----|------|----------|
-| 6 | 节点注册协议 + 心跳维护 | RegistrationHandler, HeartbeatManager, REGISTER 消息 |
-| 7 | 注册中心事件通知 + 指标 | RegistryEventListener, LoggingRegistryEventListener |
-| 8 | 随机 + 轮询 + 加权随机负载均衡 | RandomLB, RoundRobinLB, WeightedRandomLB |
-| 9 | 一致性哈希 + LoadBalancerFactory | ConsistentHashLB (TreeMap, 150 虚拟节点) |
+| 课 | 内容 | 关键产出 | 状态 |
+|----|------|----------|------|
+| 5 | 节点注册协议 + 心跳维护 | NodeChannelMap, DeadNodeDetector, REGISTER 消息 | 📋 已排课 |
+| 6 | 一致性哈希 + 虚拟节点 | ConsistentHashLB (TreeMap, 150 虚拟节点) | ⬜ |
+| 7 | 负载均衡策略集 (随机/轮询/加权) | RandomLB, RoundRobinLB, WeightedRandomLB, SPI 化 | ⬜ |
 
 ### ⬜ 阶段 3：RPC 核心深化
 
 | 课 | 内容 | 关键产出 |
 |----|------|----------|
-| 10 | RpcRequest/RpcResponse + 超时机制 | RpcFutureAdapter.orTimeout(), RpcStatus |
-| 11 | JDK 动态代理 + 服务接口化 | RpcProxyFactory, RpcServiceInvoker |
-| 12 | 重试策略 (固定/指数退避/抖动) | FixedRetry, ExponentialBackoff |
-| 13 | 熔断器 (3 态状态机) | CircuitBreaker: CLOSED→OPEN→HALF_OPEN |
-| 14 | 限流器 (令牌桶 + 滑动窗口) | TokenBucketRateLimiter, SlidingWindowRateLimiter |
-| 15 | 连接池 | SimpleChannelPool (借还+驱逐+健康检查) |
-| 16 | 拦截器链 | RpcInvocationChain (日志/指标/限流/鉴权) |
+| 8 | RpcRequest/RpcResponse + 超时机制 | RpcFutureAdapter.orTimeout(), RpcStatus |
+| 9 | JDK 动态代理 + 服务接口化 | RpcProxyFactory, RpcServiceInvoker |
+| 10 | 重试策略 (固定/指数退避/抖动) | FixedRetry, ExponentialBackoff |
+| 11 | 熔断器 (3 态状态机) | CircuitBreaker: CLOSED→OPEN→HALF_OPEN |
+| 12 | 限流器 (令牌桶 + 滑动窗口) | TokenBucketRateLimiter, SlidingWindowRateLimiter |
+| 13 | 连接池 | SimpleChannelPool (借还+驱逐+健康检查) |
+| 14 | 拦截器链 | RpcInvocationChain (日志/指标/限流/鉴权) |
 
 ### ⬜ 阶段 4：Controller + Worker + 系统联调
 
 | 课 | 内容 | 关键产出 |
 |----|------|----------|
-| 17 | Controller 节点管理 + 任务调度器 | NodeManager, TaskScheduler, 故障转移 |
-| 18 | HTTP API + YAML 配置 | HttpApiServer, ConfigLoader, REST 端点 |
-| 19 | Worker 任务执行器 + 状态机 + 优雅关闭 | WorkerTaskExecutor, GracefulShutdown |
-| 20 | 全集群集成测试 + 容灾 | 3 Workers + 50 任务 + kill 节点验证 |
-| 21 | (选做) Spring Boot Starter | 自动配置, @EnableHeteroMesh |
+| 15 | Controller 任务调度器 + 故障转移 | TaskScheduler, 一致性哈希集成 |
+| 16 | HTTP API + YAML 配置 | HttpApiServer, ConfigLoader, REST 端点 |
+| 17 | Worker 任务执行器 + 状态机 + 优雅关闭 | WorkerTaskExecutor, GracefulShutdown |
+| 18 | 全集群集成测试 + 容灾 | 3 Workers + 50 任务 + kill 节点验证 |
+| 19 | (选做) 回归 + 巩固 + 面试复盘 | 全链路 Review，数据压测，简历话术 |
 
 ---
 
 ## 项目数据
 
-| 指标 | 当前 (第 2 课完成) | 目标 (21 课) |
+| 指标 | 当前 (第 3 课完成) | 目标 (21 课) |
 |------|---------------------|---------------|
 | 主代码文件 | 18 | ~95 |
 | 主代码行数 | ~1100 | ~4700 |

@@ -1,0 +1,15 @@
+# HeteroMesh 配置
+heteromesh:
+  # 序列化器配置
+  serializer:
+    # 默认序列化器（当消息类型没有被明确配置时使用）
+    default: binary
+
+    # 按消息类型路由
+    routing:
+      PING: binary         # 心跳用 Binary（最紧凑）
+      PONG: binary
+      TASK_REQUEST: json        # 业务请求用 JSON（可读，方便调试）
+      TASK_RESPONSE: json
+      REGISTER: json       # 注册消息用 JSON（一次性，可读优先）
+      REGISTER_ACK: json
