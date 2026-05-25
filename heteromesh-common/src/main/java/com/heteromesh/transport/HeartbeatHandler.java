@@ -37,7 +37,6 @@ public class HeartbeatHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object o) {
-        // PING PONG不能污染上层业务，所以要处理掉
         Message msg = (Message) o;
         if (msg.getType() == MessageType.PING) {
             // 发送回应
@@ -45,9 +44,11 @@ public class HeartbeatHandler extends ChannelInboundHandlerAdapter {
             log.debug("发送回应");
             // 计数器重置
             beatCnt.set(0);
+            ctx.fireChannelRead(msg);
         } else if (msg.getType() == MessageType.PONG) {
             // 计数器重置
             beatCnt.set(0);
+            ctx.fireChannelRead(msg);
         } else {
             // 如果不是PING PONG则传到上层业务
             ctx.fireChannelRead(msg);

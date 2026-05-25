@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class HeartbeatHandlerTest {
 
+    // 收到 PING → 回复 PONG
     @Test
     void shouldReplyPongWhenReceivingPing() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
@@ -23,17 +24,17 @@ class HeartbeatHandlerTest {
         assertFalse(channel.finish());
     }
 
+    // 收到 PING → 回复 PONG + 透传 PING 给下游（供 ServerHandler 更新 lastHeartbeat）
     @Test
-    void shouldNotForwardPingToNextHandler() {
+    void shouldForwardPingToNextHandler() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
 
         channel.writeInbound(Message.createPing());
 
-        // PING 被吃掉了，下一个 Handler 不会收到
         Message forwarded = channel.readInbound();
-        assertNull(forwarded, "PING 不应该传给下游 Handler");
+        assertNotNull(forwarded, "PING 应该透传给下游 Handler");
+        assertEquals(MessageType.PING, forwarded.getType());
 
-        // PING 触发了 PONG 回复，需要消费掉
         Message pongReply = channel.readOutbound();
         assertNotNull(pongReply, "收到 PING 应该回复 PONG");
         assertEquals(MessageType.PONG, pongReply.getType());
@@ -41,17 +42,20 @@ class HeartbeatHandlerTest {
         assertFalse(channel.finish());
     }
 
+    // 收到 PONG → 透传 PONG 给下游（供 ServerHandler 更新 lastHeartbeat）
     @Test
-    void shouldNotForwardPongToNextHandler() {
+    void shouldForwardPongToNextHandler() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
 
         channel.writeInbound(Message.createPong());
 
         Message forwarded = channel.readInbound();
-        assertNull(forwarded, "PONG 不应该传给下游 Handler");
+        assertNotNull(forwarded, "PONG 应该透传给下游 Handler");
+        assertEquals(MessageType.PONG, forwarded.getType());
         assertFalse(channel.finish());
     }
 
+    // 非心跳消息（TASK_REQUEST）照样透传
     @Test
     void shouldForwardTaskRequestToNextHandler() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
@@ -65,6 +69,7 @@ class HeartbeatHandlerTest {
         assertFalse(channel.finish());
     }
 
+    // IdleStateHandler 触发 ALL_IDLE → 发送 PING
     @Test
     void shouldSendPingOnAllIdleEvent() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
@@ -78,12 +83,13 @@ class HeartbeatHandlerTest {
         assertFalse(channel.finish());
     }
 
+    // 连续 3 次空闲无应答 → 第 4 次关闭 Channel
     @Test
     void shouldCloseChannelAfterThreeConsecutiveIdleEvents() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
         IdleStateEvent allIdle = IdleStateEvent.FIRST_ALL_IDLE_STATE_EVENT;
 
-        // 3 次空闲 → 发 3 条 PING，无人应答，计数器升至 3
+        // 3 次空闲 → 计数器升至 3
         channel.pipeline().fireUserEventTriggered(allIdle);
         channel.pipeline().fireUserEventTriggered(allIdle);
         channel.pipeline().fireUserEventTriggered(allIdle);
@@ -96,19 +102,18 @@ class HeartbeatHandlerTest {
         assertFalse(channel.isOpen(), "连续 3 次无应答后应该关闭 Channel");
     }
 
+    // 收到 PONG → 计数器归零，不会误判断连
     @Test
     void shouldResetCounterWhenPongReceived() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
         IdleStateEvent allIdle = IdleStateEvent.FIRST_ALL_IDLE_STATE_EVENT;
 
-        // 2 次空闲 → 发 2 条 PING
         channel.pipeline().fireUserEventTriggered(allIdle);
         channel.pipeline().fireUserEventTriggered(allIdle);
 
         // 收到 PONG → 计数器归零
         channel.writeInbound(Message.createPong());
 
-        // 再发 3 次空闲 → 计数器重新从 0 开始，不会关
         channel.pipeline().fireUserEventTriggered(allIdle);
         channel.pipeline().fireUserEventTriggered(allIdle);
         channel.pipeline().fireUserEventTriggered(allIdle);
@@ -117,19 +122,17 @@ class HeartbeatHandlerTest {
         channel.finishAndReleaseAll();
     }
 
+    // 收到 PING → 计数器归零，对方的探活也能证明连接正常
     @Test
     void shouldResetCounterWhenPingReceived() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
         IdleStateEvent allIdle = IdleStateEvent.FIRST_ALL_IDLE_STATE_EVENT;
 
-        // 2 次空闲
         channel.pipeline().fireUserEventTriggered(allIdle);
         channel.pipeline().fireUserEventTriggered(allIdle);
 
-        // 收到对方的 PING 探活 → 说明连接仍是好的，计数器归零
         channel.writeInbound(Message.createPing());
 
-        // 再发 3 次空闲
         channel.pipeline().fireUserEventTriggered(allIdle);
         channel.pipeline().fireUserEventTriggered(allIdle);
         channel.pipeline().fireUserEventTriggered(allIdle);
@@ -138,14 +141,13 @@ class HeartbeatHandlerTest {
         channel.finishAndReleaseAll();
     }
 
+    // 非 IdleStateEvent 事件直接忽略，不抛异常
     @Test
     void shouldIgnoreNonIdleStateEvents() {
         EmbeddedChannel channel = new EmbeddedChannel(new HeartbeatHandler());
 
-        // 传一个非 IdleStateEvent 的普通事件，不应抛异常
         channel.pipeline().fireUserEventTriggered("普通事件");
 
-        // Channel 仍应存活，且没有乱发消息
         assertTrue(channel.isOpen());
         Message out = channel.readOutbound();
         assertNull(out, "非 IdleStateEvent 不应触发任何行为");

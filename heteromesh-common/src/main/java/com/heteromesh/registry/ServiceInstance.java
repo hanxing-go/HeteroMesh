@@ -9,6 +9,10 @@ public class ServiceInstance {
     private String nodeId;       // 节点唯一标识，如 "worker-gpu-01"
     private String host;         // Worker 的 IP 地址
     private int port;            // Worker 的端口
+    //gpu状态
+    private String gpuType;
+    private int vramFree;
+
     private long registerTime;   // 注册时间戳
     private long lastHeartbeat;  // 最后一次心跳时间戳
 

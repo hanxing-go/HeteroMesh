@@ -20,6 +20,14 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- 集成测试需要 Controller 模块 -->
+        <dependency>
+            <groupId>com.heteromesh</groupId>
+            <artifactId>heteromesh-controller</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

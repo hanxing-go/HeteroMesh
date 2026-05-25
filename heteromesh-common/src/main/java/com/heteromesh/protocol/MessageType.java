@@ -9,6 +9,8 @@ package com.heteromesh.protocol;
 public enum MessageType {
     PING((byte) 0x01),      //心跳请求
     PONG((byte) 0x02),      //心跳应答
+    REGISTER((byte) 0x03),
+    REGISTER_ACK((byte) 0x04),
     TASK_REQUEST((byte) 0x10),      // 推理任务请求
     TASK_RESPONSE((byte) 0x11);      // 推理任务应答
 

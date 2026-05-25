@@ -1,5 +1,10 @@
 package com.heteromesh.protocol;
 
+import com.google.gson.Gson;
+import com.heteromesh.registry.ServiceInstance;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.UUID;
 
 /**
@@ -8,6 +13,8 @@ import java.util.UUID;
  * 只存「业务相关」的字段，不存协议头字段（版本号、长度等）
  * 协议头由 MessageSerializer 在编码时写入、解码时读取
  */
+@Getter
+@Setter
 public class Message {
 
     private MessageType type;
@@ -21,10 +28,9 @@ public class Message {
         this.body = body;
     }
 
-    // ========== getter ==========
-    public MessageType getType() { return type; }
-    public String getRequestId() { return requestId; }
-    public String getBody() { return body; }
+    public Message() {
+
+    }
 
     // ========== 静态工厂方法 ==========
 
@@ -42,5 +48,18 @@ public class Message {
 
     public static Message createTaskResponse(String requestId, String body) {
         return new Message(MessageType.TASK_RESPONSE, requestId, body);
+    }
+
+    public static Message createRegister(ServiceInstance instance) {
+        return new Message(MessageType.REGISTER, UUID.randomUUID().toString(),
+                new Gson().toJson(instance));
+    }
+
+    public static Message createAck(String requestId, String nodeId) {
+        Message msg = new Message();
+        msg.setType(MessageType.REGISTER_ACK);
+        msg.setBody("{\"nodeId\":\"" + nodeId + "\",\"status\":\"ok\"}");
+        msg.setRequestId(requestId);
+        return msg;
     }
 }
