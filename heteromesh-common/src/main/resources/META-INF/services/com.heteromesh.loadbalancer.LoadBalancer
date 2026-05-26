@@ -1,0 +1,6 @@
+# HeteroMesh LoadBalancer SPI 扩展
+# 格式: key=全限定类名
+consistentHash=com.heteromesh.loadbalancer.ConsistentHashLoadBalancer
+random=com.heteromesh.loadbalancer.RandomLoadBalancer
+roundRobin=com.heteromesh.loadbalancer.RoundRobinLoadBalancer
+weighted=com.heteromesh.loadbalancer.WeightedLoadBalancer

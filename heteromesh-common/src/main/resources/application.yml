@@ -13,3 +13,7 @@ heteromesh:
       TASK_RESPONSE: json
       REGISTER: json       # 注册消息用 JSON（一次性，可读优先）
       REGISTER_ACK: json
+  # 负载均衡配置
+  loadbalancer:
+    # 可选 consistentHash | random | roundRobin | weighted
+    default: consistentHash   # 默认负载均衡算法

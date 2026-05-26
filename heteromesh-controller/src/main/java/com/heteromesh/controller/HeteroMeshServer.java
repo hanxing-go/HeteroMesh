@@ -1,9 +1,10 @@
 package com.heteromesh.controller;
 
+import com.heteromesh.config.ConfigLoader;
 import com.heteromesh.controller.node.DeadNodeDetector;
 import com.heteromesh.controller.node.NodeChannelMap;
-import com.heteromesh.loadbalancer.ConsistentHashLoadBalancer;
 import com.heteromesh.loadbalancer.LoadBalancer;
+import com.heteromesh.loadbalancer.LoadBalancerFactory;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
 import com.heteromesh.registry.InMemoryServiceRegistry;
@@ -42,10 +43,34 @@ public class HeteroMeshServer {
         try {
             ServiceRegistry sr = new InMemoryServiceRegistry();
             NodeChannelMap ncm = new NodeChannelMap();
-            LoadBalancer lb = new ConsistentHashLoadBalancer();
+
+
+//            LoadBalancer lb = new ConsistentHashLoadBalancer();
+            // ---------从 YAML 配置读取负载均衡策略名，默认 consistentHash---------------
+            String lbType = "consistentHash";
+            try {
+                Map<String, Object> config = ConfigLoader.getConfig();
+                Object heteromesh = config.get("heteromesh");
+                if (heteromesh instanceof Map) {
+                    Object lb = ((Map<String, Object>) heteromesh).get("loadbalancer");
+                    if (lb instanceof Map) {
+                        Object def = ((Map<String, Object>) lb).get("default");
+                        if (def != null) {
+                            lbType = def.toString();
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("读取负载均衡配置失败，使用默认值: consistentHash", e);
+            }
+            LoadBalancer loadBalancer = LoadBalancerFactory.getLoadBalancer(lbType);
+            log.info("负载均衡策略: {}", loadBalancer.name());
+//            ---------------------------------------------
+
+
             Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
             // 启动注册检测
-            new DeadNodeDetector(sr, ncm, lb, 30000).start();
+            new DeadNodeDetector(sr, ncm, loadBalancer, 30000).start();
             // 启动服务
             log.info("启动服务");
             new ServerBootstrap()
@@ -66,7 +91,7 @@ public class HeteroMeshServer {
                                     // 心跳处理
                                     new HeartbeatHandler(),
                                     // 2. 业务处理
-                                    new ServerHandler(sr, ncm, lb, pendingClients)
+                                    new ServerHandler(sr, ncm, loadBalancer, pendingClients)
                             );
                         }
                     })

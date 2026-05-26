@@ -13,10 +13,17 @@ public class ServiceInstance {
     private String gpuType;
     private int vramFree;
 
+    // 权重
+    private int weight = 100; // 默认100，用于加权负载均衡
+
     private long registerTime;   // 注册时间戳
     private long lastHeartbeat;  // 最后一次心跳时间戳
 
-    // 构造方法 + getter/setter ...
+    // 向后兼容：不带 weight 的构造函数，默认 weight=100
+    public ServiceInstance(String nodeId, String host, int port, String gpuType,
+                           int vramFree, long registerTime, long lastHeartbeat) {
+        this(nodeId, host, port, gpuType, vramFree, 100, registerTime, lastHeartbeat);
+    }
 
     // Worker 判活逻辑
     public boolean isAlive(long timeoutMs) {

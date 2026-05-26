@@ -31,6 +31,7 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
         ServiceInstance self = new ServiceInstance(
                 this.nodeId, "127.0.0.1", 9090,
                 "RTX 5090", 16 * 1024,
+                100,
                 System.currentTimeMillis(), System.currentTimeMillis()
         );
 

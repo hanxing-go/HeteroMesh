@@ -99,6 +99,11 @@ public class ConsistentHashLoadBalancer implements LoadBalancer{
         return nodes.size();
     }
 
+    @Override
+    public String name() {
+        return "consistentHash";
+    }
+
     // 返回哈希环上的虚拟节点总数（供测试验证虚拟节点是否正确清理）
     public int getRingSize() {
         return ring.size();

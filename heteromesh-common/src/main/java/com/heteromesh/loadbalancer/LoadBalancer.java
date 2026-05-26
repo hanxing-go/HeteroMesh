@@ -1,11 +1,13 @@
 package com.heteromesh.loadbalancer;
 
 import com.heteromesh.registry.ServiceInstance;
+import com.heteromesh.spi.SPI;
 
 /*
 * 负载均衡器接口
 * 内部维护哈希环，节点上线时调用addNode/removeNode
 * */
+@SPI("consistentHash")
 public interface LoadBalancer {
     /*
     * 节点上线时调用：把节点加入哈希环
@@ -25,4 +27,8 @@ public interface LoadBalancer {
     /*
     * 当前哈希环上有多少个物理节点*/
     int size();
+
+    /*
+    * 返回负载均衡策略名称*/
+    String name();
 }
