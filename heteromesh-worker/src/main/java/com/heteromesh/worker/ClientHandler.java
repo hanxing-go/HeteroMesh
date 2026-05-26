@@ -12,8 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 public class ClientHandler extends SimpleChannelInboundHandler<Message> {
 
     private final RpcClient rpcClient;
-    public ClientHandler(RpcClient client ) {
+    private final String nodeId;
+    public ClientHandler(RpcClient client, String nodeId) {
         this.rpcClient = client;
+        this.nodeId = nodeId;
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
@@ -27,7 +29,7 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
 //                });
         // 连接建立后，发送注册消息
         ServiceInstance self = new ServiceInstance(
-                "worker-gpu-01", "127.0.0.1", 9090,
+                this.nodeId, "127.0.0.1", 9090,
                 "RTX 5090", 16 * 1024,
                 System.currentTimeMillis(), System.currentTimeMillis()
         );
@@ -52,8 +54,21 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
 
         switch (msg.getType()) {
             case TASK_RESPONSE -> rpcClient.onResponse(msg);
+            case TASK_REQUEST -> handleTaskRequest(ctx, msg);
             case REGISTER_ACK -> log.info("注册确认: {}", msg.getBody());
             default -> log.debug("收到回复: {}", msg.getBody());
         }
+    }
+
+    private void handleTaskRequest(ChannelHandlerContext ctx, Message msg) {
+        // 处理请求
+        log.info("收到转发任务: requestId = {}, body = {}", msg.getRequestId(), msg.getBody());
+
+        // 暂时设计为模拟请求
+        String result = "[" + this.nodeId + "] 已处理: " + msg.getBody();
+
+        // 回复
+        Message response = Message.createTaskResponse(msg.getRequestId(), result);
+        ctx.writeAndFlush(response);
     }
 }

@@ -2,6 +2,8 @@ package com.heteromesh.controller;
 
 import com.heteromesh.controller.node.DeadNodeDetector;
 import com.heteromesh.controller.node.NodeChannelMap;
+import com.heteromesh.loadbalancer.ConsistentHashLoadBalancer;
+import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
 import com.heteromesh.registry.InMemoryServiceRegistry;
@@ -9,6 +11,7 @@ import com.heteromesh.registry.ServiceRegistry;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -17,6 +20,8 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -37,8 +42,10 @@ public class HeteroMeshServer {
         try {
             ServiceRegistry sr = new InMemoryServiceRegistry();
             NodeChannelMap ncm = new NodeChannelMap();
+            LoadBalancer lb = new ConsistentHashLoadBalancer();
+            Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
             // 启动注册检测
-            new DeadNodeDetector(sr, ncm, 30000).start();
+            new DeadNodeDetector(sr, ncm, lb, 30000).start();
             // 启动服务
             log.info("启动服务");
             new ServerBootstrap()
@@ -59,7 +66,7 @@ public class HeteroMeshServer {
                                     // 心跳处理
                                     new HeartbeatHandler(),
                                     // 2. 业务处理
-                                    new ServerHandler(sr, ncm)
+                                    new ServerHandler(sr, ncm, lb, pendingClients)
                             );
                         }
                     })

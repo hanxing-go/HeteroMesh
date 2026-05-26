@@ -1,5 +1,7 @@
 package com.heteromesh.controller.node;
 
+import com.heteromesh.loadbalancer.ConsistentHashLoadBalancer;
+import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.registry.InMemoryServiceRegistry;
 import com.heteromesh.registry.ServiceInstance;
 import com.heteromesh.registry.ServiceRegistry;
@@ -13,13 +15,15 @@ class DeadNodeDetectorTest {
 
     private ServiceRegistry registry;
     private NodeChannelMap nodeChannelMap;
+    private LoadBalancer lb;
     private DeadNodeDetector detector;
 
     @BeforeEach
     void setUp() {
         registry = new InMemoryServiceRegistry();
         nodeChannelMap = new NodeChannelMap();
-        detector = new DeadNodeDetector(registry, nodeChannelMap, 5000);
+        lb = new ConsistentHashLoadBalancer();
+        detector = new DeadNodeDetector(registry, nodeChannelMap, lb, 5000);
     }
 
     // 心跳超时的节点从注册中心移除，映射也解绑

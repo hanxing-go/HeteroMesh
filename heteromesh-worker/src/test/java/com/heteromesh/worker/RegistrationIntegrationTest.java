@@ -2,6 +2,8 @@ package com.heteromesh.worker;
 
 import com.heteromesh.controller.ServerHandler;
 import com.heteromesh.controller.node.NodeChannelMap;
+import com.heteromesh.loadbalancer.ConsistentHashLoadBalancer;
+import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
 import com.heteromesh.registry.InMemoryServiceRegistry;
@@ -15,6 +17,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -38,6 +42,8 @@ class RegistrationIntegrationTest {
         try {
             ServiceRegistry registry = new InMemoryServiceRegistry();
             NodeChannelMap nodeChannelMap = new NodeChannelMap();
+            LoadBalancer lb = new ConsistentHashLoadBalancer();
+            Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
 
             // 启动 Controller（使用生产 ServerHandler）
             Channel serverChannel = new ServerBootstrap()
@@ -52,7 +58,7 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ServerHandler(registry, nodeChannelMap)
+                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients)
                             );
                         }
                     })
@@ -75,7 +81,7 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ClientHandler(rpcClient)
+                                    new ClientHandler(rpcClient, "worker-gpu-01")
                             );
                         }
                     })
@@ -104,6 +110,8 @@ class RegistrationIntegrationTest {
         try {
             ServiceRegistry registry = new InMemoryServiceRegistry();
             NodeChannelMap nodeChannelMap = new NodeChannelMap();
+            LoadBalancer lb = new ConsistentHashLoadBalancer();
+            Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
 
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -117,7 +125,7 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ServerHandler(registry, nodeChannelMap)
+                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients)
                             );
                         }
                     })
@@ -139,7 +147,7 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ClientHandler(rpcClient)
+                                    new ClientHandler(rpcClient, "worker-gpu-01")
                             );
                         }
                     })

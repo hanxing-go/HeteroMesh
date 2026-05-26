@@ -1,5 +1,6 @@
 package com.heteromesh.controller.node;
 
+import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.registry.ServiceInstance;
 import com.heteromesh.registry.ServiceRegistry;
 import io.netty.channel.Channel;
@@ -18,6 +19,10 @@ public class DeadNodeDetector {
     private final ServiceRegistry registry;
     private final NodeChannelMap nodeChannelMap;
     private final long timeoutMs;
+    private final LoadBalancer loadBalancer;
+
+
+
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor(r ->{
                 Thread t = new Thread(r, "dead-node-dector");
@@ -25,10 +30,11 @@ public class DeadNodeDetector {
                 return t;
             });
 
-    public DeadNodeDetector(ServiceRegistry registry, NodeChannelMap nodeChannelMap, long timeoutMs) {
+    public DeadNodeDetector(ServiceRegistry registry, NodeChannelMap nodeChannelMap, LoadBalancer lb, long timeoutMs) {
         this.registry = registry;
         this.nodeChannelMap = nodeChannelMap;
         this.timeoutMs = timeoutMs;
+        this.loadBalancer = lb;
     }
 
     public void start() {
@@ -45,12 +51,13 @@ public class DeadNodeDetector {
                 log.warn("节点心跳超时，删除节点: nodeId = {}", instance.getNodeId());
                 // 移除
                 registry.unregister(instance.getNodeId());
+                loadBalancer.removeNode(instance.getNodeId());  // 哈希环也要移除
                 // 关闭channel并且解绑
                 Channel channel = nodeChannelMap.getChannel(instance.getNodeId());
                 if (channel != null && channel.isActive()) {
                     channel.close();
-                    nodeChannelMap.unbind(channel);
                 }
+                nodeChannelMap.unbind(channel);
             }
         }
     }

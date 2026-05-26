@@ -22,9 +22,11 @@ import java.util.concurrent.TimeUnit;
 public class WorkerClient {
     private String host;
     private int port;
-    public WorkerClient(String host, int port) {
+    private String nodeId;
+    public WorkerClient(String host, int port, String nodeId) {
         this.host = host;
         this.port = port;
+        this.nodeId = nodeId;
     }
 
     public void connect() throws InterruptedException {
@@ -51,7 +53,7 @@ public class WorkerClient {
                                             new MessageEncoder(),
                                             new HeartbeatHandler(),
                                             // 业务代码
-                                            new ClientHandler(rpcClient)
+                                            new ClientHandler(rpcClient, nodeId)
                                     );
                         }
                     }));
