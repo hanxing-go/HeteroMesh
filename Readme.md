@@ -17,7 +17,7 @@
                     ┌──────────▼───────────┐
                     │   Controller         │  云服务器 (公网 IP)
                     │   节点管理 + 任务调度  │
-                    │   一致性哈希 + LB     │
+                    │   4 种 LB 策略 (SPI)  │
                     └──────────┬───────────┘
                                │ 自定义二进制协议 (Netty 长连接)
               ┌────────────────┼────────────────┐
@@ -37,34 +37,26 @@ HeteroMesh/
 ├── heteromesh-common/                    公共模块
 │   └── com.heteromesh/
 │       ├── protocol/       Message, MessageType, MessageEncoder, MessageDecoder
-│       ├── serializer/     Serializer(I), JsonSerializer, BinarySerializer, KryoSerializer,
-│       │                   SerializerFactory, SerializerRouter, SerializationConfig
-│       ├── registry/       ServiceRegistry(I), InMemoryServiceRegistry, ServiceInstance,
-│       │                   RegistrationHandler, HeartbeatManager, RegistryEventListener
-│       ├── loadbalance/    LoadBalancer(I), RandomLB, RoundRobinLB, WeightedRandomLB,
-│       │                   ConsistentHashLB, LoadBalancerFactory
-│       ├── rpc/            RpcRequest, RpcResponse, RpcStatus, RpcFutureAdapter,
-│       │                   RpcClient, RpcProxyFactory, RpcServiceInvoker
-│       ├── faulttolerance/ RetryPolicy(I), FixedRetry, ExponentialBackoff, NoRetry,
-│       │                   RetryableRpcClient, CircuitBreaker, TokenBucketRateLimiter,
-│       │                   SlidingWindowRateLimiter
-│       ├── pool/           ChannelPool(I), SimpleChannelPool, ChannelPoolConfig
-│       ├── interceptor/    RpcInterceptor(I), RpcInvocationChain, LoggingInterceptor,
-│       │                   MetricsInterceptor, RateLimitingInterceptor, AuthInterceptor
-│       ├── config/         GlobalConfig, HeteroMeshConfig, ConfigLoader
-│       └── transport/      ExceptionHandler, HeartbeatHandler, ConnectionManager
+│       ├── serializer/     Serializer(I), JsonSerializer, BinarySerializer,
+│       │                   SerializerFactory, SerializerRouter, SerializationConfig, SerializerCode
+│       ├── registry/       ServiceRegistry(I), InMemoryServiceRegistry, ServiceInstance
+│       ├── loadbalance/    LoadBalancer(I), ConsistentHashLoadBalancer, RandomLoadBalancer,
+│       │                   RoundRobinLoadBalancer, WeightedLoadBalancer, LoadBalancerFactory
+│       ├── rpc/            RpcClient
+│       ├── spi/            SPI, SpiExtensionLoader
+│       ├── config/         ConfigLoader
+│       └── transport/      ExceptionHandler, HeartbeatHandler
 ├── heteromesh-controller/  调度节点 (Server)
 │   └── com.heteromesh.controller/
 │       ├── HeteroMeshServer (Netty Server 入口)
-│       ├── node/           WorkerNode, NodeManager
-│       ├── scheduler/      TaskInfo, TaskStatus, TaskScheduler
-│       └── http/           HttpApiServer, TaskSubmitHandler, NodeListHandler, StatsHandler
+│       ├── ServerHandler (业务处理：注册/转发/回传)
+│       └── node/
+│             ├── NodeChannelMap (nodeId ↔ Channel 双向映射)
+│             └── DeadNodeDetector (定时扫描踢出超时节点)
 └── heteromesh-worker/      计算节点 (Client)
     └── com.heteromesh.worker/
         ├── WorkerClient (Netty Client 入口)
-        ├── ClientHandler
-        ├── task/           WorkerTaskState, WorkerTask, WorkerTaskExecutor, DummyTaskProcessor
-        └── lifecycle/      GracefulShutdown
+        └── ClientHandler (处理注册 ACK + 转发来的 TASK_REQUEST)
 ```
 
 ## 技术栈
@@ -108,25 +100,25 @@ HeteroMesh/
 | 3 | SPI 插件机制 + SerializerFactory | SpiExtensionLoader, @SPI, META-INF/services | ✅ |
 | 4 | 序列化策略路由 + YAML 配置 | SerializerRouter, SerializerCode, ConfigLoader | ✅ |
 
-### 🔜 阶段 2：注册中心 + 节点管理 (进行中)
+### ✅ 阶段 2：注册中心 + 负载均衡 (已完成)
 
 | 课 | 内容 | 关键产出 | 状态 |
 |----|------|----------|------|
-| 5 | 节点注册协议 + 心跳维护 | NodeChannelMap, DeadNodeDetector, REGISTER 消息 | 📋 已排课 |
-| 6 | 一致性哈希 + 虚拟节点 | ConsistentHashLB (TreeMap, 150 虚拟节点) | ⬜ |
-| 7 | 负载均衡策略集 (随机/轮询/加权) | RandomLB, RoundRobinLB, WeightedRandomLB, SPI 化 | ⬜ |
+| 5 | 节点注册协议 + 心跳维护 | NodeChannelMap, DeadNodeDetector, REGISTER/REGISTER_ACK | ✅ |
+| 6 | 一致性哈希 + 消息中转 | ConsistentHashLoadBalancer (TreeMap + 150 虚拟节点 + MD5), ServerHandler 转发 | ✅ |
+| 7 | 负载均衡策略集 + SPI 插件化 | Random/RoundRobin/Weighted, LoadBalancerFactory, @SPI, YAML 配置切换 | ✅ |
 
-### ⬜ 阶段 3：RPC 核心深化
+### 🔜 阶段 3：RPC 核心深化
 
 | 课 | 内容 | 关键产出 |
 |----|------|----------|
-| 8 | RpcRequest/RpcResponse + 超时机制 | RpcFutureAdapter.orTimeout(), RpcStatus |
-| 9 | JDK 动态代理 + 服务接口化 | RpcProxyFactory, RpcServiceInvoker |
-| 10 | 重试策略 (固定/指数退避/抖动) | FixedRetry, ExponentialBackoff |
-| 11 | 熔断器 (3 态状态机) | CircuitBreaker: CLOSED→OPEN→HALF_OPEN |
-| 12 | 限流器 (令牌桶 + 滑动窗口) | TokenBucketRateLimiter, SlidingWindowRateLimiter |
-| 13 | 连接池 | SimpleChannelPool (借还+驱逐+健康检查) |
-| 14 | 拦截器链 | RpcInvocationChain (日志/指标/限流/鉴权) |
+| 8 | 动态代理 + 服务发布/引用 | RpcProxyFactory, JDK Proxy, 透明远程调用 |
+| 9 | RpcRequest/RpcResponse + 超时机制 | RpcFutureAdapter.orTimeout(), RpcStatus |
+| 10 | 拦截器链 | RpcInvocationChain (日志/指标/限流/鉴权) |
+| 11 | 重试策略 (固定/指数退避) | FixedRetry, ExponentialBackoff |
+| 12 | 熔断器 (3 态状态机) | CircuitBreaker: CLOSED→OPEN→HALF_OPEN |
+| 13 | 限流器 (令牌桶 + 滑动窗口) | TokenBucketRateLimiter, SlidingWindowRateLimiter |
+| 14 | 连接池 | SimpleChannelPool (借还+驱逐+健康检查) |
 
 ### ⬜ 阶段 4：Controller + Worker + 系统联调
 
@@ -142,25 +134,25 @@ HeteroMesh/
 
 ## 项目数据
 
-| 指标 | 当前 (第 3 课完成) | 目标 (21 课) |
-|------|---------------------|---------------|
-| 主代码文件 | 18 | ~95 |
-| 主代码行数 | ~1100 | ~4700 |
-| 测试文件 | 13 | ~44 |
-| 测试代码行数 | ~1450 | ~4800 |
-| 总代码量 | ~2550 | ~9500 |
+| 指标 | 当前 (第 7 课完成) | 目标 |
+|------|---------------------|------|
+| 主代码文件 | 35 | ~95 |
+| 主代码行数 | ~2500 | ~4700 |
+| 测试文件 | 23 | ~44 |
+| 测试代码行数 | ~2400 | ~4800 |
+| 总代码量 | ~4900 | ~9500 |
 | Maven 模块 | 3 | 4 |
 | 序列化器 | 2 (JSON/Binary) | 3 (JSON/Binary/Kryo) |
-| 负载均衡策略 | 0 | 4 |
+| 负载均衡策略 | 4 (一致性哈希/随机/轮询/加权) | 4 ✅ |
 | 容错组件 | 0 | 6 |
 
 ## 设计亮点
 
-1. **自定义二进制协议**：非 HTTP/gRPC，10 字节固定头，Magic(4) + Version(1) + Type(1) + Length(4)
-2. **SPI 插件化**：序列化器、负载均衡器通过 META-INF/services 发现，类 Dubbo 设计
-3. **全链路容错**：重试 → 熔断 → 限流 三层防护，防止级联故障
-4. **异步非阻塞**：全链路 CompletableFuture，不阻塞 Netty EventLoop
-5. **策略模式**：序列化路由按消息类型自动选择（心跳永远 Binary）
+1. **自定义二进制协议**：非 HTTP/gRPC，11 字节固定头，Magic(4) + Version(1) + SerializerCode(1) + Type(1) + Length(4)
+2. **SPI 插件化**：序列化器和负载均衡器均通过 @SPI + META-INF/services 发现，类 Dubbo 设计，改 YAML 配置即可切换策略
+3. **四种负载均衡**：一致性哈希（TreeMap + 150 虚拟节点 + MD5）、随机、轮询（AtomicInteger + 防溢出）、加权（累积权重 + 二分查找）
+4. **异步非阻塞**：全链路 CompletableFuture + requestId 匹配，不阻塞 Netty EventLoop
+5. **策略路由**：SerializerRouter 按消息类型自动选序列化器（心跳永远 Binary，业务 JSON）
 6. **面向接口**：核心组件 interface + 2~4 实现，开闭原则
 7. **Worker 主动出站**：穿透 NAT，无需 Controller 知道 Worker IP
 
@@ -170,7 +162,7 @@ HeteroMesh/
 # 编译
 mvn clean compile
 
-# 运行全部测试 (当前 13 个测试类)
+# 运行全部测试 (当前 23 个测试类)
 mvn clean test
 
 # 仅运行压力测试 (1000 条 RPC 消息)
