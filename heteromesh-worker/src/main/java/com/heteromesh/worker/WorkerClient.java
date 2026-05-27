@@ -2,6 +2,8 @@ package com.heteromesh.worker;
 
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
+import com.heteromesh.rpc.RpcDispatcher;
+import com.heteromesh.rpc.RpcServiceRegistry;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import com.heteromesh.transport.RpcClient;
@@ -23,10 +25,24 @@ public class WorkerClient {
     private String host;
     private int port;
     private String nodeId;
+
+    // 服务
+    private RpcServiceRegistry serviceRegistry;
+
     public WorkerClient(String host, int port, String nodeId) {
         this.host = host;
         this.port = port;
         this.nodeId = nodeId;
+        this.serviceRegistry = new RpcServiceRegistry();
+    }
+
+    public RpcServiceRegistry getServiceRegistry() {
+        return serviceRegistry;
+    }
+
+    // 便捷方法：直接发布服务  ← 新增方法
+    public <T> void publishService(Class<T> interfaceClass, T implementation) {
+        serviceRegistry.publish(interfaceClass, implementation);
     }
 
     public void connect() throws InterruptedException {
@@ -34,6 +50,9 @@ public class WorkerClient {
 
         try {
             log.info("连接启动");
+
+            RpcDispatcher dispatcher = new RpcDispatcher(serviceRegistry);
+
             Bootstrap b = new Bootstrap()
                     .group(workerGroup)
                     .channel(NioSocketChannel.class)
@@ -53,7 +72,7 @@ public class WorkerClient {
                                             new MessageEncoder(),
                                             new HeartbeatHandler(),
                                             // 业务代码
-                                            new ClientHandler(rpcClient, nodeId)
+                                            new ClientHandler(rpcClient, nodeId, dispatcher)
                                     );
                         }
                     }));
