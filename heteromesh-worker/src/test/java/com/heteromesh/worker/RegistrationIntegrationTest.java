@@ -81,7 +81,7 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ClientHandler(rpcClient, "worker-gpu-01")
+                                    new ClientHandler(rpcClient, "worker-gpu-01", null)
                             );
                         }
                     })
@@ -147,7 +147,7 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ClientHandler(rpcClient, "worker-gpu-01")
+                                    new ClientHandler(rpcClient, "worker-gpu-01", null)
                             );
                         }
                     })
