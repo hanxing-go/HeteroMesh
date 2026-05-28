@@ -42,7 +42,7 @@ HeteroMesh/
 │       ├── registry/       ServiceRegistry(I), InMemoryServiceRegistry, ServiceInstance
 │       ├── loadbalance/    LoadBalancer(I), ConsistentHashLoadBalancer, RandomLoadBalancer,
 │       │                   RoundRobinLoadBalancer, WeightedLoadBalancer, LoadBalancerFactory
-│       ├── rpc/            RpcClient
+│       ├── rpc/            RpcInvocation, RpcProxy, RpcServiceRegistry, RpcDispatcher
 │       ├── spi/            SPI, SpiExtensionLoader
 │       ├── config/         ConfigLoader
 │       └── transport/      ExceptionHandler, HeartbeatHandler
@@ -110,10 +110,10 @@ HeteroMesh/
 
 ### 🔜 阶段 3：RPC 核心深化
 
-| 课 | 内容 | 关键产出 |
-|----|------|----------|
-| 8 | 动态代理 + 服务发布/引用 | RpcProxyFactory, JDK Proxy, 透明远程调用 |
-| 9 | RpcRequest/RpcResponse + 超时机制 | RpcFutureAdapter.orTimeout(), RpcStatus |
+| 课 | 内容 | 关键产出 | 状态 |
+|----|------|----------|------|
+| 8 | 动态代理 + 服务发布/引用 | RpcProxy, RpcInvocation, RpcDispatcher, RpcServiceRegistry | ✅ |
+| 9 | RpcRequest/RpcResponse + 超时机制 | RpcFutureAdapter.orTimeout(), RpcStatus | 🔜 |
 | 10 | 拦截器链 | RpcInvocationChain (日志/指标/限流/鉴权) |
 | 11 | 重试策略 (固定/指数退避) | FixedRetry, ExponentialBackoff |
 | 12 | 熔断器 (3 态状态机) | CircuitBreaker: CLOSED→OPEN→HALF_OPEN |
@@ -134,13 +134,13 @@ HeteroMesh/
 
 ## 项目数据
 
-| 指标 | 当前 (第 7 课完成) | 目标 |
+| 指标 | 当前 (第 8 课完成) | 目标 |
 |------|---------------------|------|
-| 主代码文件 | 35 | ~95 |
-| 主代码行数 | ~2500 | ~4700 |
-| 测试文件 | 23 | ~44 |
-| 测试代码行数 | ~2400 | ~4800 |
-| 总代码量 | ~4900 | ~9500 |
+| 主代码文件 | 43 | ~95 |
+| 主代码行数 | ~3000 | ~4700 |
+| 测试文件 | 27 | ~44 |
+| 测试代码行数 | ~2900 | ~4800 |
+| 总代码量 | ~5900 | ~9500 |
 | Maven 模块 | 3 | 4 |
 | 序列化器 | 2 (JSON/Binary) | 3 (JSON/Binary/Kryo) |
 | 负载均衡策略 | 4 (一致性哈希/随机/轮询/加权) | 4 ✅ |
@@ -153,8 +153,9 @@ HeteroMesh/
 3. **四种负载均衡**：一致性哈希（TreeMap + 150 虚拟节点 + MD5）、随机、轮询（AtomicInteger + 防溢出）、加权（累积权重 + 二分查找）
 4. **异步非阻塞**：全链路 CompletableFuture + requestId 匹配，不阻塞 Netty EventLoop
 5. **策略路由**：SerializerRouter 按消息类型自动选序列化器（心跳永远 Binary，业务 JSON）
-6. **面向接口**：核心组件 interface + 2~4 实现，开闭原则
-7. **Worker 主动出站**：穿透 NAT，无需 Controller 知道 Worker IP
+6. **动态代理**：JDK Proxy + InvocationHandler，像调本地方法一样调远程服务，自动序列化/反序列化参数和返回值
+7. **面向接口**：核心组件 interface + 2~4 实现，开闭原则
+8. **Worker 主动出站**：穿透 NAT，无需 Controller 知道 Worker IP
 
 ## 快速开始
 
@@ -162,7 +163,7 @@ HeteroMesh/
 # 编译
 mvn clean compile
 
-# 运行全部测试 (当前 23 个测试类)
+# 运行全部测试 (当前 27 个测试类)
 mvn clean test
 
 # 仅运行压力测试 (1000 条 RPC 消息)
