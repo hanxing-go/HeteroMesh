@@ -1,7 +1,6 @@
 package com.heteromesh.rpc;
 
 import com.google.gson.Gson;
-import com.heteromesh.protocol.Message;
 import com.heteromesh.transport.RpcClient;
 
 import java.lang.reflect.InvocationHandler;
@@ -51,36 +50,35 @@ public class RpcProxy {
 
             RpcRequest request = new RpcRequest();
             request.setInvocation(invocation);
-            // TODO: 先暂时默认设置
             request.setTimeoutMs(DEFAULT_TIMEOUT_MS);
             request.setOneWay(method.getReturnType() == void.class);
 
-            // ③ 发送 RPC 请求
+            // ③ 发送
             String body = GSON.toJson(request);
-            CompletableFuture<Message> future = rpcClient.call(body);
 
-            // ④ 处理返回值
+            // void 方法：发了不管
             if (request.isOneWay()) {
-                // void 方法：不等结果，直接返回 null
+                rpcClient.call(body);
                 return null;
             }
 
+            // ④ RpcClient 内部生成 requestId 并返回 RpcFuture
+            RpcFuture rpcFuture = rpcClient.call(body, request.getTimeoutMs());
+
+            // 异步方法：返回 CompletableFuture<RpcResponse>
             if (method.getReturnType() == CompletableFuture.class) {
-                // 异步方法：把 CompletableFuture<Message> 转成 CompletableFuture<实际类型>
-                return future.thenApply(msg -> {
-                    return GSON.fromJson(msg.getBody(), RpcResponse.class);
-                });
+                return rpcFuture.getFuture().thenApply(msg ->
+                        GSON.fromJson(msg.getBody(), RpcResponse.class));
             }
 
-            // ⑤ 同步方法：用 RpcFuture 等待响应（统一返回 RpcResponse，自动处理超时清理）
-            RpcFuture rpcFuture = new RpcFuture(future, request.getRequestId(), rpcClient);
-            RpcResponse rpcResponse = rpcFuture.get(request.getTimeoutMs());
+            // ⑤ 同步等待
+            RpcResponse rpcResponse = rpcFuture.get();
 
             if (rpcResponse.isSuccess()) {
-                // 取出 result，反序列化为期望的返回结果
                 return GSON.fromJson(GSON.toJson(rpcResponse.getResult()), method.getReturnType());
             } else {
-                throw new RuntimeException("RPC 调用失败:" + rpcResponse.getStatus() + "-" + rpcResponse.getErrorMessage());
+                throw new RuntimeException("RPC 调用失败:" + rpcResponse.getStatus()
+                        + "-" + rpcResponse.getErrorMessage());
             }
         }
 

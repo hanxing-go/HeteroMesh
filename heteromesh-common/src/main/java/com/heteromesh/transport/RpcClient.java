@@ -1,9 +1,12 @@
 package com.heteromesh.transport;
 
 import com.heteromesh.protocol.Message;
+import com.heteromesh.protocol.MessageType;
+import com.heteromesh.rpc.RpcFuture;
 import io.netty.channel.Channel;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,20 +27,30 @@ public class RpcClient {
      * 发请求，返回一个「承诺以后给你结果」的盒子。
      */
     public CompletableFuture<Message> call(String body) {
-        // 1. 创建请求消息（requestId 自动生成）
         Message request = Message.createTaskRequest(body);
+        return call(body, request.getRequestId());
+    }
 
-        // 2. 创建一个空盒子
+    /**
+     * 发请求，使用外部传入的 requestId（由 RpcRequest 提供），
+     * 保证 pendingRequests 的 key 和 RpcFuture 清理用的是同一个 ID。
+     */
+    public CompletableFuture<Message> call(String body, String requestId) {
+        Message request = new Message(MessageType.TASK_REQUEST, requestId, body);
         CompletableFuture<Message> future = new CompletableFuture<>();
-
-        // 3. 登记：requestId → 盒子
-        pendingRequests.put(request.getRequestId(), future);
-
-        // 4. 异步发出去，不阻塞
+        pendingRequests.put(requestId, future);
         channel.writeAndFlush(request);
-
-        // 5. 立刻返回盒子
         return future;
+    }
+
+    /**
+     * 发请求并返回 RpcFuture。requestId 由 RpcClient 内部生成，
+     * 不存在 RpcRequest 上，保证线路上和内存中都只有一份 requestId。
+     */
+    public RpcFuture call(String body, long timeoutMs) {
+        String requestId = UUID.randomUUID().toString();
+        CompletableFuture<Message> future = call(body, requestId);
+        return new RpcFuture(future, requestId, this, timeoutMs);
     }
 
     /**

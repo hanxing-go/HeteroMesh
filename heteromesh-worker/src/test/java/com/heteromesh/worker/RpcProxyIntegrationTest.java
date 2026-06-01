@@ -3,7 +3,10 @@ package com.heteromesh.worker;
 import com.heteromesh.protocol.*;
 import com.heteromesh.rpc.RpcDispatcher;
 import com.heteromesh.rpc.RpcProxy;
+import com.heteromesh.rpc.RpcRequest;
+import com.heteromesh.rpc.RpcResponse;
 import com.heteromesh.rpc.RpcServiceRegistry;
+import com.heteromesh.rpc.RpcStatus;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import com.heteromesh.transport.RpcClient;
@@ -28,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * 端到端集成测试：Client 代理 → 网络 → Server（RpcDispatcher）→ 反射执行 → 返回。
  */
 class RpcProxyIntegrationTest {
+
+    private static final Gson GSON = new Gson();
 
     // ---------- 端到端：同步调用 ----------
 
@@ -67,15 +72,15 @@ class RpcProxyIntegrationTest {
                                         protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
                                             if (msg.getType() == MessageType.TASK_REQUEST) {
                                                 try {
-                                                    Object result = dispatcher.dispatch(msg.getBody());
-                                                    String resultJson = result != null
-                                                            ? new Gson().toJson(result) : "";
+                                                    RpcRequest request = GSON.fromJson(msg.getBody(), RpcRequest.class);
+                                                    Object result = dispatcher.dispatch(GSON.toJson(request.getInvocation()));
+                                                    RpcResponse rpcResp = RpcResponse.success(result);
                                                     ctx.writeAndFlush(Message.createTaskResponse(
-                                                            msg.getRequestId(), resultJson));
+                                                            msg.getRequestId(), GSON.toJson(rpcResp)));
                                                 } catch (Exception e) {
-                                                    String err = "{\"error\":\"" + e.getMessage() + "\"}";
+                                                    RpcResponse rpcResp = RpcResponse.error(RpcStatus.ERROR, e.getMessage());
                                                     ctx.writeAndFlush(Message.createTaskResponse(
-                                                            msg.getRequestId(), err));
+                                                            msg.getRequestId(), GSON.toJson(rpcResp)));
                                                 }
                                             }
                                         }
@@ -173,15 +178,15 @@ class RpcProxyIntegrationTest {
                                         protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
                                             if (msg.getType() == MessageType.TASK_REQUEST) {
                                                 try {
-                                                    Object result = dispatcher.dispatch(msg.getBody());
-                                                    String resultJson = result != null
-                                                            ? new Gson().toJson(result) : "";
+                                                    RpcRequest request = GSON.fromJson(msg.getBody(), RpcRequest.class);
+                                                    Object result = dispatcher.dispatch(GSON.toJson(request.getInvocation()));
+                                                    RpcResponse rpcResp = RpcResponse.success(result);
                                                     ctx.writeAndFlush(Message.createTaskResponse(
-                                                            msg.getRequestId(), resultJson));
+                                                            msg.getRequestId(), GSON.toJson(rpcResp)));
                                                 } catch (Exception e) {
-                                                    String err = "{\"error\":\"" + e.getMessage() + "\"}";
+                                                    RpcResponse rpcResp = RpcResponse.error(RpcStatus.ERROR, e.getMessage());
                                                     ctx.writeAndFlush(Message.createTaskResponse(
-                                                            msg.getRequestId(), err));
+                                                            msg.getRequestId(), GSON.toJson(rpcResp)));
                                                 }
                                             }
                                         }

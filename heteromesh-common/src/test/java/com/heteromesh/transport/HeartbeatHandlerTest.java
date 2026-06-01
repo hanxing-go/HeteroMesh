@@ -21,6 +21,9 @@ class HeartbeatHandlerTest {
         Message reply = channel.readOutbound();
         assertNotNull(reply, "收到 PING 应该回复 PONG");
         assertEquals(MessageType.PONG, reply.getType());
+
+        // PING 会被 fireChannelRead 透传，消费掉
+        channel.readInbound();
         assertFalse(channel.finish());
     }
 

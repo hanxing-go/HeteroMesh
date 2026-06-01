@@ -8,16 +8,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NodeChannelMap {
     // 建立nodeId和Netty Channel的双向映射
     private final ConcurrentHashMap<String, Channel> nodeToChannel = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, String> channelToNode = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Channel, String> channelToNode = new ConcurrentHashMap<>();
 
     public void bind(String nodeId, Channel channel) {
-        nodeToChannel.put(nodeId, channel);
-        channelToNode.put(channel.id().asShortText(), nodeId);
+        // 如果该 nodeId 之前绑定过旧 Channel，先清理旧的逆向映射
+        Channel oldChannel = nodeToChannel.put(nodeId, channel);
+        if (oldChannel != null) {
+            channelToNode.remove(oldChannel);
+        }
+        channelToNode.put(channel, nodeId);
     }
 
     public void unbind(Channel channel) {
-        String nodeId = channelToNode.get(channel.id().asShortText());
-        channelToNode.remove(channel.id().asShortText());
+        String nodeId = channelToNode.remove(channel);
         if (nodeId != null) {
             nodeToChannel.remove(nodeId);
         }
@@ -28,7 +31,7 @@ public class NodeChannelMap {
     }
 
     public String getNodeId(Channel channel) {
-        return channelToNode.get(channel.id().asShortText());
+        return channelToNode.get(channel);
     }
 
     public int size() {

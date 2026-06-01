@@ -22,14 +22,27 @@ public class RpcFuture {
 
     private static final Gson GSON = new Gson();
 
+    private final CompletableFuture<Message> future;
     private final String requestId;
     private final RpcClient rpcClient;
-    private final CompletableFuture<Message> future;
+    private final long timeoutMs;
 
     public RpcFuture(CompletableFuture<Message> future, String requestId, RpcClient rpcClient) {
+        this(future, requestId, rpcClient, 30_000);
+    }
+
+    public RpcFuture(CompletableFuture<Message> future, String requestId, RpcClient rpcClient, long timeoutMs) {
         this.future = future;
         this.requestId = requestId;
         this.rpcClient = rpcClient;
+        this.timeoutMs = timeoutMs;
+    }
+
+    /**
+     * 使用构造时指定的超时同步等待。
+     */
+    public RpcResponse get() {
+        return get(timeoutMs);
     }
 
     /**
@@ -41,24 +54,14 @@ public class RpcFuture {
     public RpcResponse get(long timeoutMs) {
         try {
             Message msg = future.get(timeoutMs, TimeUnit.MILLISECONDS);
-            // 正常拿到 Message → 解析 body 为 RpcResponse
             return GSON.fromJson(msg.getBody(), RpcResponse.class);
         } catch (TimeoutException e) {
-            // ① 清理 pendingRequests 里的残留（否则这个 entry 永远存在 → 内存泄漏）
             rpcClient.cleanup(requestId);
-            // ② 返回结构化的超时响应（调用方不需要 try-catch）
             return RpcResponse.timeout("调用超时，等待 " + timeoutMs + "ms 未收到响应");
         } catch (Exception e) {
             rpcClient.cleanup(requestId);
             return RpcResponse.error(RpcStatus.FRAMEWORK_ERROR, e.getMessage());
         }
-    }
-
-    /**
-     * 使用默认超时（30 秒）。
-     */
-    public RpcResponse get() {
-        return get(30_000);
     }
 
     /** 返回原始的 CompletableFuture，供异步调用场景使用 */
