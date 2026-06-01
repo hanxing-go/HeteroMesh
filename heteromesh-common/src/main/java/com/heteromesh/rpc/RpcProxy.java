@@ -8,7 +8,6 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class RpcProxy {
     private static final Gson GSON = new Gson();
@@ -50,12 +49,18 @@ public class RpcProxy {
             invocation.setParameterTypes(getParameterTypeNames(method));
             invocation.setArgs(args != null ? args : new Object[0]);
 
+            RpcRequest request = new RpcRequest();
+            request.setInvocation(invocation);
+            // TODO: 先暂时默认设置
+            request.setTimeoutMs(DEFAULT_TIMEOUT_MS);
+            request.setOneWay(method.getReturnType() == void.class);
+
             // ③ 发送 RPC 请求
-            String body = GSON.toJson(invocation);
+            String body = GSON.toJson(request);
             CompletableFuture<Message> future = rpcClient.call(body);
 
             // ④ 处理返回值
-            if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
+            if (request.isOneWay()) {
                 // void 方法：不等结果，直接返回 null
                 return null;
             }
@@ -63,21 +68,20 @@ public class RpcProxy {
             if (method.getReturnType() == CompletableFuture.class) {
                 // 异步方法：把 CompletableFuture<Message> 转成 CompletableFuture<实际类型>
                 return future.thenApply(msg -> {
-                    // 这里只能拿到 Message，实际类型需要调用方自己转换
-                    // 简化处理：返回 body 原始字符串
-                    return msg.getBody();
+                    return GSON.fromJson(msg.getBody(), RpcResponse.class);
                 });
             }
 
-            // ⑤ 同步方法：阻塞等待，直到拿到响应
-            Message response = future.get(DEFAULT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            String responseBody = response.getBody();
-            if (responseBody == null || responseBody.isEmpty()) {
-                return null;
-            }
+            // ⑤ 同步方法：用 RpcFuture 等待响应（统一返回 RpcResponse，自动处理超时清理）
+            RpcFuture rpcFuture = new RpcFuture(future, request.getRequestId(), rpcClient);
+            RpcResponse rpcResponse = rpcFuture.get(request.getTimeoutMs());
 
-            // ⑥ 反序列化返回值
-            return GSON.fromJson(responseBody, method.getReturnType());
+            if (rpcResponse.isSuccess()) {
+                // 取出 result，反序列化为期望的返回结果
+                return GSON.fromJson(GSON.toJson(rpcResponse.getResult()), method.getReturnType());
+            } else {
+                throw new RuntimeException("RPC 调用失败:" + rpcResponse.getStatus() + "-" + rpcResponse.getErrorMessage());
+            }
         }
 
         private String[] getParameterTypeNames(Method method) {

@@ -17,10 +17,4 @@ public class RpcInvocation {
 
     /*参数值数组（JSon 序列化后的原始值）*/
     private Object[] args;
-
-    /* 请求 ID，用于匹配响应 */
-    private String requestId;
-
-    /* 单向调用：true = 发了不管结果，适合日志/通知类场景 */
-    private boolean oneWay;
 }

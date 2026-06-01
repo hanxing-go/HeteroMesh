@@ -52,4 +52,8 @@ public class RpcClient {
             log.warn("[RpcClient] 收到未知响应，requestId={}", response.getRequestId());
         }
     }
+
+    public void cleanup(String requestId) {
+        pendingRequests.remove(requestId);
+    }
 }

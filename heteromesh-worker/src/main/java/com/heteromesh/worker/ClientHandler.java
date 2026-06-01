@@ -5,6 +5,9 @@ import com.heteromesh.protocol.Message;
 
 import com.heteromesh.registry.ServiceInstance;
 import com.heteromesh.rpc.RpcDispatcher;
+import com.heteromesh.rpc.RpcRequest;
+import com.heteromesh.rpc.RpcResponse;
+import com.heteromesh.rpc.RpcStatus;
 import com.heteromesh.transport.RpcClient;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -80,21 +83,33 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
 
         // 处理请求
         try {
-            log.info("收到 rpc 调用: requestId = {}", msg.getRequestId());
-            // ① 反射分发：找到服务 → 调用方法 → 拿到返回值
-            Object result = dispatcher.dispatch(msg.getBody());
-            // ② 将返回值序列化后返回
-            String resultJson = result != null ? new Gson().toJson(result) : "";
+            // ① 解析 RpcRequest（body 现在是 RpcRequest JSON，不再是裸 RpcInvocation）
+            RpcRequest request = GSON.fromJson(msg.getBody(), RpcRequest.class);
+            log.info("收到 rpc 调用: requestId = {}, service = {}, method = {}",
+                    msg.getRequestId(),
+                    request.getInvocation().getServiceName(),
+                    request.getInvocation().getMethodName());
 
-            Message response = Message.createTaskResponse(msg.getRequestId(), resultJson);
+            // ② 反射分发：dispatcher 只需要 RpcInvocation 的 JSON
+            Object result = dispatcher.dispatch(GSON.toJson(request.getInvocation()));
+
+            // ③ 构造成功响应
+            RpcResponse rpcResponse = RpcResponse.success(result);
+            Message response = Message.createTaskResponse(msg.getRequestId(), GSON.toJson(rpcResponse));
+            ctx.writeAndFlush(response);
+
+        } catch (IllegalArgumentException e) {
+            // 服务未找到 / 方法未找到
+            RpcStatus status = e.getMessage() != null && e.getMessage().contains("服务未找到")
+                    ? RpcStatus.NOT_FOUND : RpcStatus.METHOD_NOT_FOUND;
+            RpcResponse rpcResponse = RpcResponse.error(status, e.getMessage());
+            Message response = Message.createTaskResponse(msg.getRequestId(), GSON.toJson(rpcResponse));
             ctx.writeAndFlush(response);
 
         } catch (Exception e) {
             log.error("RPC 调用失败: requestId = {}", msg.getRequestId(), e);
-
-            // ③ 异常信息也返回给调用方
-            String errorBody = "{\"error\":\"" + e.getMessage() + "\"}";
-            Message response = Message.createTaskResponse(msg.getRequestId(), errorBody);
+            RpcResponse rpcResponse = RpcResponse.error(RpcStatus.ERROR, e.getMessage());
+            Message response = Message.createTaskResponse(msg.getRequestId(), GSON.toJson(rpcResponse));
             ctx.writeAndFlush(response);
         }
     }

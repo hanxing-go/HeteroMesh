@@ -44,9 +44,9 @@ public class RpcDispatcher {
         // ③ 转换参数类型（Gson 数字类型处理）
         Object[] convertedArgs = convertArgs(invocation.getArgs(), method.getParameterTypes());
         // ④ 反射调用
-        log.debug("RPC 调用: {}.{}(), requestId = {}", invocation.getServiceName(),
-                invocation.getMethodName(),
-                invocation.getRequestId());
+        log.debug("RPC 调用: {}.{}()",
+                invocation.getServiceName(),
+                invocation.getMethodName());
         return method.invoke(service, convertedArgs);
     }
 
