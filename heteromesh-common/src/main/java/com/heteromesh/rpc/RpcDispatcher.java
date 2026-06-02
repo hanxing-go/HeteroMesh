@@ -28,11 +28,11 @@ public class RpcDispatcher {
     /**
      * 分发一个 RPC 调用：查服务 → 匹配方法 → 反射调用 → 返回结果。
      *
-     * @param invocationJson TASK_REQUEST body（RpcInvocation 的 JSON）
+     * @param invocation TASK_REQUEST body（RpcInvocation 的 JSON）
      * @return 方法返回值（可能为 null），序列化后放入 TASK_RESPONSE
      */
-    public Object dispatch(String invocationJson) throws Exception {
-        RpcInvocation invocation = GSON.fromJson(invocationJson, RpcInvocation.class);
+    public Object dispatch(/*String invocationJson*/ RpcInvocation invocation) throws Exception {
+//        RpcInvocation invocation = GSON.fromJson(invocationJson, RpcInvocation.class);
 
         // ① 查找服务实现
         Object service = registry.lookup(invocation.getServiceName());

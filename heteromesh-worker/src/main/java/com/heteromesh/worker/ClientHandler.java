@@ -4,10 +4,7 @@ import com.google.gson.Gson;
 import com.heteromesh.protocol.Message;
 
 import com.heteromesh.registry.ServiceInstance;
-import com.heteromesh.rpc.RpcDispatcher;
-import com.heteromesh.rpc.RpcRequest;
-import com.heteromesh.rpc.RpcResponse;
-import com.heteromesh.rpc.RpcStatus;
+import com.heteromesh.rpc.*;
 import com.heteromesh.transport.RpcClient;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -21,10 +18,13 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
     private final RpcDispatcher dispatcher;
     private final Gson GSON = new Gson();
 
+
     public ClientHandler(RpcClient client, String nodeId, RpcDispatcher dispatcher) {
         this.rpcClient = client;
         this.nodeId = nodeId;
         this.dispatcher = dispatcher;
+
+
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
@@ -85,13 +85,18 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
         try {
             // ① 解析 RpcRequest（body 现在是 RpcRequest JSON，不再是裸 RpcInvocation）
             RpcRequest request = GSON.fromJson(msg.getBody(), RpcRequest.class);
-            log.info("收到 rpc 调用: requestId = {}, service = {}, method = {}",
-                    msg.getRequestId(),
-                    request.getInvocation().getServiceName(),
-                    request.getInvocation().getMethodName());
+//            log.info("收到 rpc 调用: requestId = {}, service = {}, method = {}",
+//                    msg.getRequestId(),
+//                    request.getInvocation().getServiceName(),
+//                    request.getInvocation().getMethodName());
 
             // ② 反射分发：dispatcher 只需要 RpcInvocation 的 JSON
-            Object result = dispatcher.dispatch(GSON.toJson(request.getInvocation()));
+//            Object result = dispatcher.dispatch(GSON.toJson(request.getInvocation()));
+            RpcInterceptorChain chain = RpcInterceptorChain.newBuilder()
+                    .addInterceptor(new LogInterceptor())
+                    .handler(invocation -> dispatcher.dispatch(invocation))
+                    .build();
+            Object result = chain.next(request.getInvocation());// 走拦截器
 
             // ③ 构造成功响应
             RpcResponse rpcResponse = RpcResponse.success(result);
