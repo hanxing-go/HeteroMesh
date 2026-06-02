@@ -1,20 +1,18 @@
 package com.heteromesh.rpc;
 
-import java.util.Map;
-
 /**
  * 令牌桶限流器。参考 Guava RateLimiter 惰性填充设计。
  *
  * 每次 tryAcquire() 时计算时间差来补充令牌，不用后台线程。
  */
-public class TokenBuckerRateLimiter {
+public class TokenBucketRateLimiter {
     private final long capacity;                // 桶容量
     private final double refillRatePerMs;       // 每毫秒生成多少令牌
 
     private double availableTokens;             // 当前可用令牌数
     private long lastRefillTime;                // 上次填充时间
 
-    public TokenBuckerRateLimiter(long permitsPerSecond) {
+    public TokenBucketRateLimiter(long permitsPerSecond) {
         this.capacity = permitsPerSecond;
         this.refillRatePerMs = (double) permitsPerSecond / 1000;
         this.availableTokens = capacity;
