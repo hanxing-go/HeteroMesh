@@ -73,7 +73,7 @@ class RpcProxyIntegrationTest {
                                             if (msg.getType() == MessageType.TASK_REQUEST) {
                                                 try {
                                                     RpcRequest request = GSON.fromJson(msg.getBody(), RpcRequest.class);
-                                                    Object result = dispatcher.dispatch(GSON.toJson(request.getInvocation()));
+                                                    Object result = dispatcher.dispatch(request.getInvocation());
                                                     RpcResponse rpcResp = RpcResponse.success(result);
                                                     ctx.writeAndFlush(Message.createTaskResponse(
                                                             msg.getRequestId(), GSON.toJson(rpcResp)));
@@ -179,7 +179,7 @@ class RpcProxyIntegrationTest {
                                             if (msg.getType() == MessageType.TASK_REQUEST) {
                                                 try {
                                                     RpcRequest request = GSON.fromJson(msg.getBody(), RpcRequest.class);
-                                                    Object result = dispatcher.dispatch(GSON.toJson(request.getInvocation()));
+                                                    Object result = dispatcher.dispatch(request.getInvocation());
                                                     RpcResponse rpcResp = RpcResponse.success(result);
                                                     ctx.writeAndFlush(Message.createTaskResponse(
                                                             msg.getRequestId(), GSON.toJson(rpcResp)));

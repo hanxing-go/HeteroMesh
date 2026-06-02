@@ -1,14 +1,11 @@
 package com.heteromesh.rpc;
 
-import com.google.gson.Gson;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class RpcDispatcherTest {
-
-    private static final Gson GSON = new Gson();
 
     private RpcServiceRegistry registry;
     private RpcDispatcher dispatcher;
@@ -32,7 +29,7 @@ class RpcDispatcherTest {
         inv.setParameterTypes(new String[]{"int", "int"});
         inv.setArgs(new Object[]{3, 5});
 
-        Object result = dispatcher.dispatch(GSON.toJson(inv));
+        Object result = dispatcher.dispatch(inv);
         assertEquals(8, result);  // add() 返回 int，反射调用返回的就是 Integer
     }
 
@@ -47,7 +44,7 @@ class RpcDispatcherTest {
         inv.setParameterTypes(new String[]{"java.lang.String"});
         inv.setArgs(new Object[]{"张三"});
 
-        Object result = dispatcher.dispatch(GSON.toJson(inv));
+        Object result = dispatcher.dispatch(inv);
         assertEquals("你好, 张三", result);
     }
 
@@ -62,7 +59,7 @@ class RpcDispatcherTest {
         inv.setParameterTypes(new String[]{});
         inv.setArgs(new Object[]{});
 
-        Object result = dispatcher.dispatch(GSON.toJson(inv));
+        Object result = dispatcher.dispatch(inv);
         assertEquals("1.0", result);
     }
 
@@ -78,7 +75,7 @@ class RpcDispatcherTest {
         inv.setArgs(new Object[]{});
 
         assertThrows(IllegalArgumentException.class,
-                () -> dispatcher.dispatch(GSON.toJson(inv)),
+                () -> dispatcher.dispatch(inv),
                 "服务未找到时应抛 IllegalArgumentException");
     }
 
@@ -94,7 +91,7 @@ class RpcDispatcherTest {
         inv.setArgs(new Object[]{});
 
         assertThrows(NoSuchMethodException.class,
-                () -> dispatcher.dispatch(GSON.toJson(inv)),
+                () -> dispatcher.dispatch(inv),
                 "方法不存在时应抛 NoSuchMethodException");
     }
 
@@ -112,11 +109,11 @@ class RpcDispatcherTest {
         inv.setArgs(new Object[]{1, 2});
 
         // 第一次调用
-        Object r1 = dispatcher.dispatch(GSON.toJson(inv));
+        Object r1 = dispatcher.dispatch(inv);
         assertEquals(3, r1);
 
         // 第二次调用 —— 应该走缓存
-        Object r2 = dispatcher.dispatch(GSON.toJson(inv));
+        Object r2 = dispatcher.dispatch(inv);
         assertEquals(3, r2);
     }
 
