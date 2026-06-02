@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -77,5 +78,43 @@ public class WeightedLoadBalancer implements LoadBalancer{
     @Override
     public String name() {
         return "weighted";
+    }
+
+    @Override
+    public ServiceInstance select(String key, Set<String> failedNodes) {
+        if (nodes.isEmpty()) {
+            return null;
+        }
+        if (failedNodes == null || failedNodes.isEmpty()) {
+            return select(key);
+        }
+
+        // 只对非失败节点重建权重
+        int subsetWeight = 0;
+        List<ServiceInstance> subsetNodes = new ArrayList<>();
+        List<Integer> subsetWeights = new ArrayList<>();
+
+        for (ServiceInstance node : nodes) {
+            if (!failedNodes.contains(node.getNodeId())) {
+                subsetNodes.add(node);
+                subsetWeight += node.getWeight();
+                subsetWeights.add(subsetWeight);
+            }
+        }
+        if (subsetNodes.isEmpty() || subsetWeight <= 0) {
+            return null;
+        }
+
+        int dice = ThreadLocalRandom.current().nextInt(subsetWeight);
+        int lo = 0, hi = subsetWeights.size() - 1;
+        while (lo < hi) {
+            int mid = (lo + hi) >>> 1;
+            if (subsetWeights.get(mid) > dice) {
+                hi = mid;
+            } else {
+                lo = mid + 1;
+            }
+        }
+        return subsetNodes.get(lo);
     }
 }

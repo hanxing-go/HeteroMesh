@@ -4,6 +4,7 @@ import com.heteromesh.registry.ServiceInstance;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -50,5 +51,17 @@ public class RandomLoadBalancer implements LoadBalancer{
     @Override
     public String name() {
         return "random";
+    }
+
+    @Override
+    public ServiceInstance select(String key, Set<String> failedNodes) {
+        if (nodes.isEmpty()) return null;
+        if (failedNodes == null || failedNodes.isEmpty()) return select(key);
+
+        List<ServiceInstance> candidates = nodes.stream()
+                .filter(n -> !failedNodes.contains(n.getNodeId()))
+                .toList();
+        if (candidates.isEmpty()) return null;
+        return candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
     }
 }

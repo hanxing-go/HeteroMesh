@@ -3,7 +3,9 @@ package com.heteromesh.loadbalancer;
 import com.heteromesh.registry.ServiceInstance;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -44,6 +46,30 @@ public class RoundRobinLoadBalancer implements LoadBalancer{
     @Override
     public String name() {
         return "RoundRobin";
+    }
+
+    @Override
+    public ServiceInstance select(String key, Set<String> failedNodes) {
+        if (nodes.isEmpty()) {
+            return null;
+        }
+        if (failedNodes == null || failedNodes.isEmpty()) {
+            return select(key);
+        }
+
+        // 过滤掉失败的节点
+        List<ServiceInstance> candidates = new ArrayList<>();
+        for (ServiceInstance node : nodes) {
+            if (!failedNodes.contains(node.getNodeId())) {
+                candidates.add(node);
+            }
+        }
+        if (candidates.isEmpty()) {
+            return null;
+        }
+
+        int idx = (counter.getAndIncrement() & 0x7FFFFFFF) % candidates.size();
+        return candidates.get(idx);
     }
 
 }

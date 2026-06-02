@@ -11,12 +11,18 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 
 public class ServerHandler extends SimpleChannelInboundHandler<Message> {
+    private static final int DEFAULT_MAX_RETRIES = 2;   // 最多重试2次
+
+    private static final long FORWARD_TIMEOUT_MS = 5_000;   // 转发超时 5s
     private final ServiceRegistry registry;
     private final NodeChannelMap nodeChannelMap;
     private final LoadBalancer loadBalancer;
@@ -67,7 +73,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
         /*
         * 修改原本的简单回复为任务分发*/
         // 一致性哈希：计算任务分配到哪个worker
-        String requestId = msg.getRequestId();
+/*        String requestId = msg.getRequestId();
         ServiceInstance target = loadBalancer.select(requestId);
         if (target == null) {
             // 没有可用 Worker
@@ -78,6 +84,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
         }
 
         // ② 从 NodeChannelMap 拿到目标 Worker 的 Channel
+
         Channel workerChannel = nodeChannelMap.getChannel(target.getNodeId());
         if (workerChannel == null || !workerChannel.isActive()) {
             log.warn("目标 Worker Channel 不可用: nodeId={}", target.getNodeId());
@@ -91,7 +98,50 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
 
         // ④ 转发 TASK_REQUEST 到选中的 Worker
         workerChannel.writeAndFlush(msg);
-        log.info("任务转发: requestId={} → Worker[{}]", requestId, target.getNodeId());
+        log.info("任务转发: requestId={} → Worker[{}]", requestId, target.getNodeId());*/
+
+        // TODO: 逻辑变更，增加重试策略
+        tryForward(ctx, msg, new HashSet<>(), 0);
+    }
+
+    private void tryForward(ChannelHandlerContext ctx, Message msg, Set<String> failedNodes, int attempt) {
+        String requestId = msg.getRequestId();
+
+        if (attempt > DEFAULT_MAX_RETRIES) {
+            Message reply = Message.createTaskResponse(requestId, "重试" + DEFAULT_MAX_RETRIES + "次后仍失败");
+            ctx.writeAndFlush(reply);
+            return;
+        }
+
+        // 选一个worker
+        ServiceInstance target = loadBalancer.select(requestId, failedNodes);
+        if (target == null) {
+            Message reply = Message.createTaskResponse(requestId, "当前没有节点可用");
+            ctx.writeAndFlush(reply);
+            return;
+        }
+
+        Channel workerChannel = nodeChannelMap.getChannel(target.getNodeId());
+        if (workerChannel == null || !workerChannel.isActive()) {
+            failedNodes.add(target.getNodeId());
+            tryForward(ctx, msg, failedNodes, attempt);
+            return;
+        }
+
+        // 转发
+        pendingClients.put(requestId, ctx.channel());
+        workerChannel.writeAndFlush(msg);
+
+        // 设置超时
+        ctx.executor().schedule(() -> {
+            Channel client = pendingClients.remove(requestId);
+            if (client != null) {
+                log.warn("Worker[{}] 超时: requestId={}, 重试第{}次",
+                        target.getNodeId(), requestId, attempt + 1);
+                failedNodes.add(target.getNodeId());
+                tryForward(ctx, msg, failedNodes, attempt + 1);
+            }
+        }, FORWARD_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     }
 
     // 注册节点

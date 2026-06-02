@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -102,6 +103,37 @@ public class ConsistentHashLoadBalancer implements LoadBalancer{
     @Override
     public String name() {
         return "consistentHash";
+    }
+
+    @Override
+    public ServiceInstance select(String key, Set<String> failedNodes) {
+        if (nodes.isEmpty()) {
+            return null;
+        }
+        if (failedNodes == null || failedNodes.isEmpty()) {
+            return select(key);  // 没有排除项，走原逻辑
+        }
+
+        int h = hash(key);
+        Map.Entry<Integer, String> entry = ring.ceilingEntry(h);
+        if (entry == null) {
+            entry = ring.firstEntry();
+        }
+
+        // 沿环顺时针走，跳过 failedNodes
+        Integer startKey = entry.getKey();
+        do {
+            String nodeId = entry.getValue();
+            if (!failedNodes.contains(nodeId)) {
+                return nodes.get(nodeId);
+            }
+            entry = ring.higherEntry(entry.getKey());
+            if (entry == null) {
+                entry = ring.firstEntry();
+            }
+        } while (entry != null && !entry.getKey().equals(startKey));
+
+        return null;  // 走了一圈，全在 failedNodes 里
     }
 
     // 返回哈希环上的虚拟节点总数（供测试验证虚拟节点是否正确清理）
