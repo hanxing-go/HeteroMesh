@@ -23,14 +23,17 @@ public class CircuitBreakerManager {
 
     /** 获取或创建某个节点的熔断器 */
     private CircuitBreaker getOrCreate(String nodeId) {
-//        return breakers.computeIfAbsent(nodeId, id -> new CircuitBreaker(id, config));
+        // computeIfAbsent是原子操作是安全的
+        return breakers.computeIfAbsent(nodeId, id -> new CircuitBreaker(id, config));
+
+
         //computeIfAbsent等价于有直接返回，没有则创建一个
-        CircuitBreaker breaker = breakers.get(nodeId);
-        if (breaker == null) {
-            breaker = new CircuitBreaker(nodeId, config);
-            breakers.put(nodeId, breaker);
-        }
-        return breaker;
+//        CircuitBreaker breaker = breakers.get(nodeId);
+//        if (breaker == null) {
+//            breaker = new CircuitBreaker(nodeId, config);
+//            breakers.put(nodeId, breaker);
+//        }
+//        return breaker;
     }
 
     /*记录成功*/

@@ -42,14 +42,18 @@ HeteroMesh/
 │       ├── registry/       ServiceRegistry(I), InMemoryServiceRegistry, ServiceInstance
 │       ├── loadbalance/    LoadBalancer(I), ConsistentHashLoadBalancer, RandomLoadBalancer,
 │       │                   RoundRobinLoadBalancer, WeightedLoadBalancer, LoadBalancerFactory
-│       ├── rpc/            RpcInvocation, RpcProxy, RpcServiceRegistry, RpcDispatcher
+│       ├── rpc/            RpcInvocation, RpcRequest, RpcResponse, RpcFuture, RpcStatus,
+│       │                   RpcProxy, RpcServiceRegistry, RpcDispatcher,
+│       │                   RpcInterceptor, RpcInterceptorChain, LogInterceptor,
+│       │                   CircuitBreaker, CircuitBreakerConfig
 │       ├── spi/            SPI, SpiExtensionLoader
 │       ├── config/         ConfigLoader
 │       └── transport/      ExceptionHandler, HeartbeatHandler
 ├── heteromesh-controller/  调度节点 (Server)
 │   └── com.heteromesh.controller/
 │       ├── HeteroMeshServer (Netty Server 入口)
-│       ├── ServerHandler (业务处理：注册/转发/回传)
+│       ├── ServerHandler (注册/转发/回传/重试/熔断)
+│       ├── CircuitBreakerManager (Worker 熔断器管理)
 │       └── node/
 │             ├── NodeChannelMap (nodeId ↔ Channel 双向映射)
 │             └── DeadNodeDetector (定时扫描踢出超时节点)
@@ -113,11 +117,11 @@ HeteroMesh/
 | 课 | 内容 | 关键产出 | 状态 |
 |----|------|----------|------|
 | 8 | 动态代理 + 服务发布/引用 | RpcProxy, RpcInvocation, RpcDispatcher, RpcServiceRegistry | ✅ |
-| 9 | RpcRequest/RpcResponse + 超时机制 | RpcFutureAdapter.orTimeout(), RpcStatus | 🔜 |
-| 10 | 拦截器链 | RpcInvocationChain (日志/指标/限流/鉴权) |
-| 11 | 重试策略 (固定/指数退避) | FixedRetry, ExponentialBackoff |
-| 12 | 熔断器 (3 态状态机) | CircuitBreaker: CLOSED→OPEN→HALF_OPEN |
-| 13 | 限流器 (令牌桶 + 滑动窗口) | TokenBucketRateLimiter, SlidingWindowRateLimiter |
+| 9 | RpcRequest/RpcResponse + 超时机制 | RpcFuture, RpcStatus, 超时清理 | ✅ |
+| 10 | 拦截器链 | RpcInterceptor, RpcInterceptorChain, LogInterceptor | ✅ |
+| 11 | 重试策略 | Controller Failover 重试, LB select 排除失败节点 | ✅ |
+| 12 | 熔断器 (3 态状态机) | CircuitBreaker: CLOSED→OPEN→HALF_OPEN | ✅ |
+| 13 | 限流器 (令牌桶 + 滑动窗口) | TokenBucketRateLimiter, SlidingWindowRateLimiter | 🔜 |
 | 14 | 连接池 | SimpleChannelPool (借还+驱逐+健康检查) |
 
 ### ⬜ 阶段 4：Controller + Worker + 系统联调
@@ -134,17 +138,17 @@ HeteroMesh/
 
 ## 项目数据
 
-| 指标 | 当前 (第 8 课完成) | 目标 |
+| 指标 | 当前 (第 12 课完成) | 目标 |
 |------|---------------------|------|
-| 主代码文件 | 43 | ~95 |
-| 主代码行数 | ~3000 | ~4700 |
-| 测试文件 | 27 | ~44 |
-| 测试代码行数 | ~2900 | ~4800 |
-| 总代码量 | ~5900 | ~9500 |
+| 主代码文件 | 56 | ~95 |
+| 主代码行数 | ~3500 | ~4700 |
+| 测试文件 | 31 | ~44 |
+| 测试代码行数 | ~3100 | ~4800 |
+| 总代码量 | ~6600 | ~9500 |
 | Maven 模块 | 3 | 4 |
 | 序列化器 | 2 (JSON/Binary) | 3 (JSON/Binary/Kryo) |
 | 负载均衡策略 | 4 (一致性哈希/随机/轮询/加权) | 4 ✅ |
-| 容错组件 | 0 | 6 |
+| 容错组件 | 3 (重试/熔断) | 6 |
 
 ## 设计亮点
 
