@@ -313,8 +313,8 @@ class ConsistentHashIntegrationTest {
 
             assertTrue(responseReceived.await(5, TimeUnit.SECONDS),
                     "即使没有 Worker，也应该收到错误响应");
-            assertEquals("无可用节点", responseBody.get(),
-                    "没有 Worker 时应该返回'无可用节点'");
+            assertEquals("当前没有节点可用", responseBody.get(),
+                    "没有 Worker 时应该返回'当前没有节点可用'");
         } finally {
             clientGroup.shutdownGracefully();
             serverWorkers.shutdownGracefully();

@@ -6,6 +6,7 @@ import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.protocol.Message;
 import com.heteromesh.registry.ServiceInstance;
 import com.heteromesh.registry.ServiceRegistry;
+import com.heteromesh.rpc.CircuitBreakerConfig;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -26,7 +27,15 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
     private final ServiceRegistry registry;
     private final NodeChannelMap nodeChannelMap;
     private final LoadBalancer loadBalancer;
+
+    /*让Controller知道这个回复应该回送给谁，相当于快递中转站*/
     private final Map<String, Channel> pendingClients;
+
+    /*熔断机制*/
+    private final CircuitBreakerManager cbManager= new CircuitBreakerManager(new CircuitBreakerConfig());
+    /*用来记住是哪个节点在处理请求*/
+    private final Map<String, String> requestToNode = new ConcurrentHashMap<>();
+
 
     public ServerHandler(ServiceRegistry registry, NodeChannelMap nodeChannelMap,
                          LoadBalancer loadBalancer, Map<String, Channel> pendingClients) {
@@ -61,51 +70,29 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
         String requestId = msg.getRequestId();
         Channel clientChannel = pendingClients.remove(requestId);
 
+        // 更新worker状态
+        String nodeId = requestToNode.remove(requestId);
+        if (nodeId != null) {
+            cbManager.onSuccess(nodeId);
+        }
+
         if (clientChannel != null && clientChannel.isActive()) {
             clientChannel.writeAndFlush(msg);
             log.info("响应回传： requestId = {} -> Client", requestId);
         } else {
-            log.warn("找不到原始客户端或已断开: requestId = {}", requestId);
+            log.warn("找不到原始客户端或已断开或无法匹配原始请求: requestId = {}", requestId);
         }
     }
 
     private void handleTaskRequest(ChannelHandlerContext ctx, Message msg) {
-        /*
-        * 修改原本的简单回复为任务分发*/
-        // 一致性哈希：计算任务分配到哪个worker
-/*        String requestId = msg.getRequestId();
-        ServiceInstance target = loadBalancer.select(requestId);
-        if (target == null) {
-            // 没有可用 Worker
-            log.warn("无可用节点处理任务: requestId={}", requestId);
-            Message reply = Message.createTaskResponse(requestId, "无可用节点");
-            ctx.writeAndFlush(reply);
-            return;
-        }
-
-        // ② 从 NodeChannelMap 拿到目标 Worker 的 Channel
-
-        Channel workerChannel = nodeChannelMap.getChannel(target.getNodeId());
-        if (workerChannel == null || !workerChannel.isActive()) {
-            log.warn("目标 Worker Channel 不可用: nodeId={}", target.getNodeId());
-            Message reply = Message.createTaskResponse(requestId, "目标节点离线");
-            ctx.writeAndFlush(reply);
-            return;
-        }
-
-        // ③ 记录 requestId → 原始客户端 Channel（Worker 回复后要用）
-        pendingClients.put(requestId, ctx.channel());
-
-        // ④ 转发 TASK_REQUEST 到选中的 Worker
-        workerChannel.writeAndFlush(msg);
-        log.info("任务转发: requestId={} → Worker[{}]", requestId, target.getNodeId());*/
-
-        // TODO: 逻辑变更，增加重试策略
         tryForward(ctx, msg, new HashSet<>(), 0);
     }
 
     private void tryForward(ChannelHandlerContext ctx, Message msg, Set<String> failedNodes, int attempt) {
         String requestId = msg.getRequestId();
+
+        /*将所有已经熔断的节点添加到失败节点中*/
+        failedNodes.addAll(cbManager.getOpenNodes());
 
         if (attempt > DEFAULT_MAX_RETRIES) {
             Message reply = Message.createTaskResponse(requestId, "重试" + DEFAULT_MAX_RETRIES + "次后仍失败");
@@ -130,18 +117,30 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
 
         // 转发
         pendingClients.put(requestId, ctx.channel());
+        /* 记住是哪个节点处理的工作*/
+        requestToNode.put(requestId, target.getNodeId());
         workerChannel.writeAndFlush(msg);
 
         // 设置超时
         ctx.executor().schedule(() -> {
             Channel client = pendingClients.remove(requestId);
+
+            /* 如果client == null， 说明handleTaskResponse已经处理过了 -> 不需要作任何事*/
             if (client != null) {
                 log.warn("Worker[{}] 超时: requestId={}, 重试第{}次",
                         target.getNodeId(), requestId, attempt + 1);
+
+                /* 请求失败一次，该节点要记录失败次数*/
+                cbManager.onFailure(target.getNodeId());
+                /* 更新requestToNode*/
+                requestToNode.remove(requestId);
+
                 failedNodes.add(target.getNodeId());
                 tryForward(ctx, msg, failedNodes, attempt + 1);
             }
         }, FORWARD_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+
+
     }
 
     // 注册节点

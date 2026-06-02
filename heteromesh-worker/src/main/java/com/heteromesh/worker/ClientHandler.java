@@ -28,14 +28,6 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
-        // 连接建立后，主动发送一条消息
-//        ctx.writeAndFlush(Message.createTaskRequest("你好，服务器！"));
-        // 用rpcClient.call()
-//        rpcClient.call("你好")
-//                .thenAccept(response -> {
-////                    System.out.println(response.getBody());
-//                    log.info("RPC回复:{}", response.getBody());
-//                });
         // 连接建立后，发送注册消息
         ServiceInstance self = new ServiceInstance(
                 this.nodeId, "127.0.0.1", 9090,
@@ -46,21 +38,10 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
 
         Message registerMsg = Message.createRegister(self);
         ctx.writeAndFlush(registerMsg);
-        // 注册成功后用rpcClient.call()
-                rpcClient.call("你好")
-                .thenAccept(response -> {
-                    log.info("RPC回复:{}", response.getBody());
-                });
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
-//        if (msg.getType() == MessageType.TASK_RESPONSE) {
-//            rpcClient.onResponse(msg);
-//        } else {
-////            System.out.println("收到回复:" + msg.getBody());
-//            log.debug("收到回复: {}",msg.getBody());
-//        }
 
         switch (msg.getType()) {
             case TASK_RESPONSE -> rpcClient.onResponse(msg);
@@ -71,27 +52,11 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
     }
 
     private void handleTaskRequest(ChannelHandlerContext ctx, Message msg) {
-//        // 处理请求
-//        log.info("收到转发任务: requestId = {}, body = {}", msg.getRequestId(), msg.getBody());
-//
-//        // 暂时设计为模拟请求
-//        String result = "[" + this.nodeId + "] 已处理: " + msg.getBody();
-//
-//        // 回复
-//        Message response = Message.createTaskResponse(msg.getRequestId(), result);
-//        ctx.writeAndFlush(response);
-
-        // 处理请求
         try {
-            // ① 解析 RpcRequest（body 现在是 RpcRequest JSON，不再是裸 RpcInvocation）
+            // ① 解析 RpcRequest
             RpcRequest request = GSON.fromJson(msg.getBody(), RpcRequest.class);
-//            log.info("收到 rpc 调用: requestId = {}, service = {}, method = {}",
-//                    msg.getRequestId(),
-//                    request.getInvocation().getServiceName(),
-//                    request.getInvocation().getMethodName());
 
-            // ② 反射分发：dispatcher 只需要 RpcInvocation 的 JSON
-//            Object result = dispatcher.dispatch(GSON.toJson(request.getInvocation()));
+            // ② 走拦截器链
             RpcInterceptorChain chain = RpcInterceptorChain.newBuilder()
                     .addInterceptor(new LogInterceptor())
                     .handler(invocation -> dispatcher.dispatch(invocation))
