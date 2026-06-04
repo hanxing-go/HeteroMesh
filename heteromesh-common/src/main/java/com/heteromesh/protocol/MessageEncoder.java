@@ -7,11 +7,12 @@ import io.netty.handler.codec.MessageToByteEncoder;
 
 
 public class MessageEncoder extends MessageToByteEncoder<Message> {
-    private static final int MAGIC_NUMBER = 0xCAFEBABE;
-    private static final byte VERSION = 0X01;
+    public static final int MAGIC_NUMBER = 0xCAFEBABE;
+    public static final byte VERSION = 0X01;
     // 协议头长度
     public static final int HEADER_LENGTH = 11;// 4（魔数）+1（版本）+ 1（序列化标识）+1（类型）+4（长度）
-
+    // 最大长度
+    public static final int MAX_FRAME_LENGTH = 1024 * 1024;
 
 
     @Override
