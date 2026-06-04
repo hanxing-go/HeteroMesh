@@ -13,7 +13,7 @@ HeteroMesh 是一个从零实现的 Java 分布式 RPC 与节点调度学习项�
 ```text
 mvn test
 BUILD SUCCESS
-Tests run: 182, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 187, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 已完成：
@@ -30,7 +30,7 @@ Tests run: 182, Failures: 0, Errors: 0, Skipped: 0
 | RPC 调用 | JDK 动态代理 + RpcInvocation + RpcDispatcher + RpcFuture |
 | 容错 | Controller 转发重试、失败节点排除、三态熔断器 |
 | 限流 | TokenBucketRateLimiter、SlidingWindowRateLimiter 已实现，尚未接入主链路 |
-| 测试 | 单元测试、集成测试、基础压力测试，共 182 个测试通过 |
+| 测试 | 单元测试、集成测试、基础压力测试，共 187 个测试通过 |
 
 规划中，尚未完成：
 
