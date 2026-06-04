@@ -43,7 +43,7 @@ public class CircuitBreaker {
         switch (state) {
             case CLOSED: failureCount = 0; break;
             case HALF_OPEN:
-                if (++successCount >= config.getHalfOPenSuccessThreshold()) {
+                if (++successCount >= config.getHalfOpenSuccessThreshold()) {
                     transitionTo(State.CLOSED);
                 }
                 break;
@@ -56,7 +56,7 @@ public class CircuitBreaker {
         switch (state) {
             case CLOSED:
                 /* 如果当前为闭合状态，并且超过熔断阈值，则熔断*/
-                if (++failureCount >= config.getFaliureThreshold()) {
+                if (++failureCount >= config.getFailureThreshold()) {
                     transitionTo(State.OPEN);
                 }
                 break;
