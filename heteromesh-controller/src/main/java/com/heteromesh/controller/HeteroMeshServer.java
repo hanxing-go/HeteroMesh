@@ -3,12 +3,15 @@ package com.heteromesh.controller;
 import com.heteromesh.config.ConfigLoader;
 import com.heteromesh.controller.node.DeadNodeDetector;
 import com.heteromesh.controller.node.NodeChannelMap;
+import com.heteromesh.controller.scheduler.TaskScheduler;
 import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.loadbalancer.LoadBalancerFactory;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
 import com.heteromesh.registry.InMemoryServiceRegistry;
 import com.heteromesh.registry.ServiceRegistry;
+import com.heteromesh.task.InMemoryTaskStore;
+import com.heteromesh.task.TaskStore;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import io.netty.bootstrap.ServerBootstrap;
@@ -71,6 +74,11 @@ public class HeteroMeshServer {
             Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
             // 启动注册检测
             new DeadNodeDetector(sr, ncm, loadBalancer, 30000).start();
+
+            // 任务调度器
+            TaskStore taskStore = new InMemoryTaskStore();
+            TaskScheduler scheduler = new TaskScheduler(taskStore, sr, loadBalancer);
+
             // 启动服务
             log.info("启动服务");
             new ServerBootstrap()
@@ -91,7 +99,7 @@ public class HeteroMeshServer {
                                     // 心跳处理
                                     new HeartbeatHandler(),
                                     // 2. 业务处理
-                                    new ServerHandler(sr, ncm, loadBalancer, pendingClients)
+                                    new ServerHandler(sr, ncm, loadBalancer, pendingClients, scheduler, taskStore)
                             );
                         }
                     })

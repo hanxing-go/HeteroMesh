@@ -5,6 +5,9 @@ import com.heteromesh.protocol.Message;
 
 import com.heteromesh.registry.ServiceInstance;
 import com.heteromesh.rpc.*;
+import com.heteromesh.task.TaskPayloadCodec;
+import com.heteromesh.task.TaskRequest;
+import com.heteromesh.task.TaskResult;
 import com.heteromesh.transport.RpcClient;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -18,13 +21,15 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
     private final RpcDispatcher dispatcher;
     private final Gson GSON = new Gson();
 
+    private final TaskExecutor taskExecutor;
 
-    public ClientHandler(RpcClient client, String nodeId, RpcDispatcher dispatcher) {
+
+    public ClientHandler(RpcClient client, String nodeId, RpcDispatcher dispatcher, TaskExecutor taskExecutor) {
         this.rpcClient = client;
         this.nodeId = nodeId;
         this.dispatcher = dispatcher;
 
-
+        this.taskExecutor = taskExecutor;
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
@@ -46,9 +51,20 @@ public class ClientHandler extends SimpleChannelInboundHandler<Message> {
         switch (msg.getType()) {
             case TASK_RESPONSE -> rpcClient.onResponse(msg);
             case TASK_REQUEST -> handleTaskRequest(ctx, msg);
+            case TASK_SUBMIT -> handleTaskSubmit(ctx, msg);
             case REGISTER_ACK -> log.info("注册确认: {}", msg.getBody());
             default -> log.debug("收到回复: {}", msg.getBody());
         }
+    }
+
+    private void handleTaskSubmit(ChannelHandlerContext ctx, Message msg) {
+        TaskRequest request = TaskPayloadCodec.decodeRequest(msg.getBody());
+        TaskResult result = taskExecutor.execute(request);
+
+        Message response = Message.createTaskResult(msg.getRequestId(),
+                TaskPayloadCodec.encodeResult(result));
+
+        ctx.writeAndFlush(response);
     }
 
     private void handleTaskRequest(ChannelHandlerContext ctx, Message msg) {

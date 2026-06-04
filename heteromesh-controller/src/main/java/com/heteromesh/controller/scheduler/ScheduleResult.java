@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ScheduleResult {
     private boolean success;
+
     private TaskMetadata task;
     private ServiceInstance worker;
     private String errorMessage;

@@ -50,6 +50,15 @@ public class Message {
         return new Message(MessageType.TASK_RESPONSE, requestId, body);
     }
 
+    public static Message createTaskSubmit(String body) {
+        return new Message(MessageType.TASK_SUBMIT, UUID.randomUUID().toString(),
+                body);
+    }
+
+    public static Message createTaskResult(String requestId, String body) {
+        return new Message(MessageType.TASK_RESULT, requestId, body);
+    }
+
     public static Message createRegister(ServiceInstance instance) {
         return new Message(MessageType.REGISTER, UUID.randomUUID().toString(),
                 new Gson().toJson(instance));
@@ -62,4 +71,6 @@ public class Message {
         msg.setRequestId(requestId);
         return msg;
     }
+
+
 }

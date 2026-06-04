@@ -11,8 +11,13 @@ public enum MessageType {
     PONG((byte) 0x02),      //心跳应答
     REGISTER((byte) 0x03),
     REGISTER_ACK((byte) 0x04),
-    TASK_REQUEST((byte) 0x10),      // 推理任务请求
-    TASK_RESPONSE((byte) 0x11);      // 推理任务应答
+
+    TASK_REQUEST((byte) 0x10),      // RPC请求
+    TASK_RESPONSE((byte) 0x11),      // RPC应答
+
+    // 新增任务调度请求
+    TASK_SUBMIT((byte) 0x20),       // 任务调度请求
+    TASK_RESULT((byte) 0x21);       // 任务调度结果
 
     private final byte code;
 

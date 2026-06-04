@@ -29,11 +29,16 @@ public class WorkerClient {
     // 服务
     private RpcServiceRegistry serviceRegistry;
 
+    // 任务调度服务
+    private TaskExecutor executor;
+
     public WorkerClient(String host, int port, String nodeId) {
         this.host = host;
         this.port = port;
         this.nodeId = nodeId;
         this.serviceRegistry = new RpcServiceRegistry();
+
+        executor = new DefaultTaskExecutor(nodeId);
     }
 
     public RpcServiceRegistry getServiceRegistry() {
@@ -72,7 +77,7 @@ public class WorkerClient {
                                             new MessageEncoder(),
                                             new HeartbeatHandler(),
                                             // 业务代码
-                                            new ClientHandler(rpcClient, nodeId, dispatcher)
+                                            new ClientHandler(rpcClient, nodeId, dispatcher, executor)
                                     );
                         }
                     }));

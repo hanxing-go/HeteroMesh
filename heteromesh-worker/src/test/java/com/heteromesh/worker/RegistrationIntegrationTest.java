@@ -2,12 +2,15 @@ package com.heteromesh.worker;
 
 import com.heteromesh.controller.ServerHandler;
 import com.heteromesh.controller.node.NodeChannelMap;
+import com.heteromesh.controller.scheduler.TaskScheduler;
 import com.heteromesh.loadbalancer.ConsistentHashLoadBalancer;
 import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.protocol.MessageDecoder;
 import com.heteromesh.protocol.MessageEncoder;
 import com.heteromesh.registry.InMemoryServiceRegistry;
 import com.heteromesh.registry.ServiceRegistry;
+import com.heteromesh.task.InMemoryTaskStore;
+import com.heteromesh.task.TaskStore;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import com.heteromesh.transport.RpcClient;
@@ -44,6 +47,9 @@ class RegistrationIntegrationTest {
             NodeChannelMap nodeChannelMap = new NodeChannelMap();
             LoadBalancer lb = new ConsistentHashLoadBalancer();
             Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
+            TaskStore taskStore = new InMemoryTaskStore();
+            TaskScheduler scheduler = new TaskScheduler(taskStore, registry, lb);
+
 
             // 启动 Controller（使用生产 ServerHandler）
             Channel serverChannel = new ServerBootstrap()
@@ -58,7 +64,7 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients)
+                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients, scheduler, taskStore)
                             );
                         }
                     })
@@ -81,7 +87,8 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ClientHandler(rpcClient, "worker-gpu-01", null)
+                                    new ClientHandler(rpcClient, "worker-gpu-01", null,
+                                            new DefaultTaskExecutor("worker-gpu-01"))
                             );
                         }
                     })
@@ -112,6 +119,8 @@ class RegistrationIntegrationTest {
             NodeChannelMap nodeChannelMap = new NodeChannelMap();
             LoadBalancer lb = new ConsistentHashLoadBalancer();
             Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
+            TaskStore taskStore = new InMemoryTaskStore();
+            TaskScheduler scheduler = new TaskScheduler(taskStore, registry, lb);
 
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, workerGroup)
@@ -125,7 +134,7 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients)
+                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients, scheduler, taskStore)
                             );
                         }
                     })
@@ -147,7 +156,8 @@ class RegistrationIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ClientHandler(rpcClient, "worker-gpu-01", null)
+                                    new ClientHandler(rpcClient, "worker-gpu-01", null,
+                                            new DefaultTaskExecutor("worker-gpu-01"))
                             );
                         }
                     })

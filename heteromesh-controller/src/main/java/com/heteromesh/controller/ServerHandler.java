@@ -2,11 +2,14 @@ package com.heteromesh.controller;
 
 import com.google.gson.Gson;
 import com.heteromesh.controller.node.NodeChannelMap;
+import com.heteromesh.controller.scheduler.ScheduleResult;
+import com.heteromesh.controller.scheduler.TaskScheduler;
 import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.protocol.Message;
 import com.heteromesh.registry.ServiceInstance;
 import com.heteromesh.registry.ServiceRegistry;
 import com.heteromesh.rpc.CircuitBreakerConfig;
+import com.heteromesh.task.*;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -24,6 +27,8 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
     private static final int DEFAULT_MAX_RETRIES = 2;   // 最多重试2次
 
     private static final long FORWARD_TIMEOUT_MS = 5_000;   // 转发超时 5s
+
+
     private final ServiceRegistry registry;
     private final NodeChannelMap nodeChannelMap;
     private final LoadBalancer loadBalancer;
@@ -36,13 +41,19 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
     /*用来记住是哪个节点在处理请求*/
     private final Map<String, String> requestToNode = new ConcurrentHashMap<>();
 
+    /*任务调度*/
+    private final TaskScheduler taskScheduler;
+    private final TaskStore taskStore;
+
 
     public ServerHandler(ServiceRegistry registry, NodeChannelMap nodeChannelMap,
-                         LoadBalancer loadBalancer, Map<String, Channel> pendingClients) {
+                         LoadBalancer loadBalancer, Map<String, Channel> pendingClients, TaskScheduler taskScheduler, TaskStore taskStore) {
         this.registry = registry;
         this.nodeChannelMap = nodeChannelMap;
         this.loadBalancer = loadBalancer;
         this.pendingClients = pendingClients;
+        this.taskScheduler = taskScheduler;
+        this.taskStore = taskStore;
     }
 
     @Override
@@ -60,7 +71,96 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
             case REGISTER -> handleRegister(channelHandlerContext, message);
             case TASK_REQUEST -> handleTaskRequest(channelHandlerContext, message);
             case TASK_RESPONSE -> handleTaskResponse(channelHandlerContext, message);
+            case TASK_SUBMIT -> handleTaskSubmit(channelHandlerContext, message);
+            case TASK_RESULT -> handleTaskResult(channelHandlerContext, message);
             default -> log.debug("收到消息: type = {}", message.getType());
+        }
+    }
+
+    private void handleTaskSubmit(ChannelHandlerContext ctx, Message message) {
+//         从 msg.body 解析 TaskRequest
+        TaskRequest request = TaskPayloadCodec.decodeRequest(message.getBody());
+        ScheduleResult result = taskScheduler.schedule(request);
+
+//         调用 taskScheduler.schedule(request)
+//         如果失败：
+//            - 构造 TaskResult(status=FAILED)
+//                - createTaskResult(msg.requestId, resultJson)
+//                - 直接 ctx.writeAndFlush
+        if (!result.isSuccess()) {
+            TaskResult failed = new TaskResult(
+                    result.getTask().getTaskId(),
+                    TaskStatus.FAILED,
+                    null,
+                    result.getErrorMessage(),
+                    0,
+                    System.currentTimeMillis(),
+                    null
+            );
+            String replyBody = TaskPayloadCodec.encodeResult(failed);
+
+
+            Message reply = Message.createTaskResult(message.getRequestId(), replyBody);
+            ctx.writeAndFlush(reply);
+            return;
+        }
+
+
+//         如果成功：
+//            - 找到 worker Channel
+        Channel workerChannel = nodeChannelMap.getChannel(result.getWorker().getNodeId());
+        if (workerChannel == null || !workerChannel.isActive()) {
+            // TODO: 本课先返回失败；后续第 21 课做任务级重试
+            TaskResult failed = new TaskResult(
+                    result.getTask().getTaskId(),
+                    TaskStatus.FAILED,
+                    null,
+                    "Selected worker channel is not available: " + result.getWorker().getNodeId(),
+                    0,
+                    System.currentTimeMillis(),
+                    result.getWorker().getNodeId()
+            );
+
+            Message reply = Message.createTaskResult(
+                    message.getRequestId(),
+                    TaskPayloadCodec.encodeResult(failed)
+            );
+
+            ctx.writeAndFlush(reply);
+            return;
+        }
+
+
+//            - 保存 pendingClients：requestId -> clientChannel
+        pendingClients.put(message.getRequestId(), ctx.channel());
+        //                - 转发原始 TASK_SUBMIT 给 Worker
+        workerChannel.writeAndFlush(message);
+
+    }
+
+    private void handleTaskResult(ChannelHandlerContext ctx, Message message) {
+
+        TaskResult result = TaskPayloadCodec.decodeResult(message.getBody());
+
+        // 先转换为running状态
+        TaskMetadata metadata = taskStore.get(result.getTaskId()).orElse(null);
+        if (metadata != null && metadata.getStatus() == TaskStatus.DISPATCHING) {
+            taskStore.updateStatus(result.getTaskId(), TaskStatus.RUNNING);
+        }
+
+        try {
+            taskStore.complete(result.getTaskId(), result);
+        } catch (Exception e) {
+            log.warn("更新任务结果失败: taskId={}, requestId={}",
+                    result.getTaskId(), message.getRequestId(), e);
+        }
+
+        Channel clientChannel = pendingClients.remove(message.getRequestId());
+
+        if (clientChannel != null && clientChannel.isActive()) {
+            clientChannel.writeAndFlush(message);
+        } else {
+            log.warn("找不到任务提交方: requestId={}", message.getRequestId());
         }
     }
 

@@ -2,6 +2,7 @@ package com.heteromesh.worker;
 
 import com.heteromesh.controller.ServerHandler;
 import com.heteromesh.controller.node.NodeChannelMap;
+import com.heteromesh.controller.scheduler.TaskScheduler;
 import com.heteromesh.loadbalancer.ConsistentHashLoadBalancer;
 import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.protocol.Message;
@@ -11,6 +12,8 @@ import com.heteromesh.protocol.MessageType;
 import com.heteromesh.registry.InMemoryServiceRegistry;
 import com.heteromesh.registry.ServiceInstance;
 import com.heteromesh.registry.ServiceRegistry;
+import com.heteromesh.task.InMemoryTaskStore;
+import com.heteromesh.task.TaskStore;
 import com.heteromesh.transport.ExceptionHandler;
 import com.heteromesh.transport.HeartbeatHandler;
 import io.netty.bootstrap.Bootstrap;
@@ -46,6 +49,8 @@ class ConsistentHashIntegrationTest {
             NodeChannelMap nodeChannelMap = new NodeChannelMap();
             LoadBalancer lb = new ConsistentHashLoadBalancer();
             Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
+            TaskStore taskStore = new InMemoryTaskStore();
+            TaskScheduler scheduler = new TaskScheduler(taskStore, registry, lb);
 
             // 启动 Controller
             Channel serverChannel = new ServerBootstrap()
@@ -60,7 +65,7 @@ class ConsistentHashIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients)
+                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients, scheduler, taskStore)
                             );
                         }
                     })
@@ -146,6 +151,8 @@ class ConsistentHashIntegrationTest {
             NodeChannelMap nodeChannelMap = new NodeChannelMap();
             LoadBalancer lb = new ConsistentHashLoadBalancer();
             Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
+            TaskStore taskStore = new InMemoryTaskStore();
+            TaskScheduler scheduler = new TaskScheduler(taskStore, registry, lb);
 
             // 启动 Controller
             Channel serverChannel = new ServerBootstrap()
@@ -160,7 +167,7 @@ class ConsistentHashIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients)
+                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients, scheduler, taskStore)
                             );
                         }
                     })
@@ -255,6 +262,8 @@ class ConsistentHashIntegrationTest {
             NodeChannelMap nodeChannelMap = new NodeChannelMap();
             LoadBalancer lb = new ConsistentHashLoadBalancer();
             Map<String, Channel> pendingClients = new ConcurrentHashMap<>();
+            TaskStore taskStore = new InMemoryTaskStore();
+            TaskScheduler scheduler = new TaskScheduler(taskStore, registry, lb);
 
             Channel serverChannel = new ServerBootstrap()
                     .group(bossGroup, serverWorkers)
@@ -268,7 +277,7 @@ class ConsistentHashIntegrationTest {
                                     new MessageDecoder(),
                                     new MessageEncoder(),
                                     new HeartbeatHandler(),
-                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients)
+                                    new ServerHandler(registry, nodeChannelMap, lb, pendingClients, scheduler, taskStore)
                             );
                         }
                     })
