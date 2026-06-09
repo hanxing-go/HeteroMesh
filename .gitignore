@@ -46,3 +46,6 @@ target/
 ### Logs ###
 logs/
 
+### CodeGraph ###
+.codegraph/
+
