@@ -1,5 +1,6 @@
 package com.heteromesh.controller.scheduler;
 
+import com.heteromesh.controller.task.TaskTimeoutManager;
 import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.registry.ServiceInstance;
 import com.heteromesh.registry.ServiceRegistry;
@@ -12,12 +13,18 @@ public class TaskScheduler {
     private final TaskStore taskStore;
     private final ServiceRegistry serviceRegistry;
     private final LoadBalancer loadBalancer;
+    private final TaskTimeoutManager timeoutManager;
 
 
     public TaskScheduler(TaskStore taskStore, ServiceRegistry serviceRegistry, LoadBalancer loadBalancer) {
+        this(taskStore, serviceRegistry, loadBalancer, null);
+    }
+
+    public TaskScheduler(TaskStore taskStore, ServiceRegistry serviceRegistry, LoadBalancer loadBalancer, TaskTimeoutManager timeoutManager) {
         this.taskStore = taskStore;
         this.serviceRegistry = serviceRegistry;
         this.loadBalancer = loadBalancer;
+        this.timeoutManager = timeoutManager;
     }
 
     public ScheduleResult schedule(TaskRequest request) {
@@ -45,6 +52,12 @@ public class TaskScheduler {
         taskStore.assignWorker(taskId, worker.getNodeId());
         // 记录请求
         taskStore.recordAttempt(taskId, worker.getNodeId());
+
+        // 注册超时
+        if (timeoutManager != null) {
+            timeoutManager.registerTimeout(task);
+        }
+
         //返回 success(task, worker)
         return ScheduleResult.success(task, worker);
     }

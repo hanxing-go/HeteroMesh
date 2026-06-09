@@ -4,6 +4,7 @@ import com.heteromesh.config.ConfigLoader;
 import com.heteromesh.controller.node.DeadNodeDetector;
 import com.heteromesh.controller.node.NodeChannelMap;
 import com.heteromesh.controller.scheduler.TaskScheduler;
+import com.heteromesh.controller.task.TaskTimeoutManager;
 import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.loadbalancer.LoadBalancerFactory;
 import com.heteromesh.protocol.MessageDecoder;
@@ -77,7 +78,8 @@ public class HeteroMeshServer {
 
             // 任务调度器
             TaskStore taskStore = new InMemoryTaskStore();
-            TaskScheduler scheduler = new TaskScheduler(taskStore, sr, loadBalancer);
+            TaskTimeoutManager taskTimeoutManager = new TaskTimeoutManager(taskStore);
+            TaskScheduler scheduler = new TaskScheduler(taskStore, sr, loadBalancer, taskTimeoutManager);
 
             // 启动服务
             log.info("启动服务");

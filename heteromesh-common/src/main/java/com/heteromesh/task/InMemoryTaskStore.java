@@ -61,9 +61,60 @@ public class InMemoryTaskStore implements TaskStore{
     @Override
     public void complete(String taskId, TaskResult result) {
         TaskMetadata task = requireTask(taskId);
+
+        //1: 确认 task 还不是终态
+        ensureNotTerminal(tasks.get(taskId));
+        //2: 确认 result.getStatus() 是终态
+        // Worker 返回 RUNNING / DISPATCHING 这种结果没有意义，应该拒绝
+        if (!result.getStatus().isTerminal()) {
+            throw new IllegalArgumentException("不允许修改");
+        }
+        //3: 走状态机
         stateMachine.transit(task, result.getStatus());
+
+        //4: 写 result
         task.setResult(result);
         task.markUpdated();
+    }
+
+
+
+    @Override
+    public void timeout(String taskId, String reason) {
+        finishWithoutWorkerResult(taskId, TaskStatus.TIMEOUT, reason);
+    }
+
+    @Override
+    public void cancel(String taskId, String reason) {
+        finishWithoutWorkerResult(taskId, TaskStatus.CANCELED, reason);
+    }
+    private void finishWithoutWorkerResult (String taskId, TaskStatus status, String reason) {
+        // TODO 1: requireTask
+        TaskMetadata task = requireTask(taskId);
+        // TODO 2: ensureNotTerminal
+        ensureNotTerminal(task);
+        // TODO 3: 构造 TaskResult
+        TaskResult result = new TaskResult(
+                task.getTaskId(),
+                status,
+                null,
+                reason,
+                task.getCreatedAt(),
+                System.currentTimeMillis(),
+                task.getAssignedWorkerId()
+        );
+        // TODO 4: stateMachine.transit(task, status)
+        stateMachine.transit(task, status);
+        // TODO 5: task.setResult(result)
+        task.setResult(result);
+        // TODO 6: markUpdated
+        task.markUpdated();
+    }
+
+    private void ensureNotTerminal(TaskMetadata task) {
+        if (task.getStatus().isTerminal()) {
+            throw new IllegalStateException("Task is terminal can not change" + task.getTaskId());
+        }
     }
 
     @Override

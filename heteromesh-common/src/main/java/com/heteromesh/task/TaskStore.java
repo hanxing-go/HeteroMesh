@@ -41,6 +41,14 @@ public interface TaskStore {
      */
     void complete(String taskId, TaskResult result);
 
+    /*
+     * Controller 判定任务超时，任务进入TIMEOUT*/
+    void timeout(String taskId, String reason);
+
+    /*
+    * 用户或者上层系统取消任务，任务进入CANCELED*/
+    void cancel(String taskId, String reason);
+
     /**
      * 列出全部任务。
      */
@@ -50,4 +58,6 @@ public interface TaskStore {
      * 按状态过滤任务。
      */
     List<TaskMetadata> listByStatus(TaskStatus status);
+
+
 }

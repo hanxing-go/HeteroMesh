@@ -1,6 +1,7 @@
 package com.heteromesh.task;
 
 
+
 /**
  * 任务状态。
  *
@@ -13,5 +14,15 @@ public enum TaskStatus {
     SUCCEEDED,      // 执行成功
     FAILED,         // 执行失败，并且不再重试
     TIMEOUT,        // 超时
-    CANCELED        // 用户取消任务
+    CANCELED;       // 用户取消任务
+
+    public boolean isTerminal() {
+        // TODO:
+        // SUCCEEDED / FAILED / TIMEOUT / CANCELED 返回 true
+        // 其他状态返回 false
+        if (this == SUCCEEDED || this == FAILED || this == TIMEOUT || this == CANCELED) {
+            return true;
+        }
+        return false;
+    }
 }

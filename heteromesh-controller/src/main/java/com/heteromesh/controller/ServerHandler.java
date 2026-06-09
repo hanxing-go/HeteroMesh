@@ -150,6 +150,9 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
 
         try {
             taskStore.complete(result.getTaskId(), result);
+        } catch (IllegalStateException e) {
+          log.warn("后到结果，不能覆盖终态: taskId={}, requestId={}",
+                  result.getTaskId(), message.getRequestId(), e);
         } catch (Exception e) {
             log.warn("更新任务结果失败: taskId={}, requestId={}",
                     result.getTaskId(), message.getRequestId(), e);
