@@ -55,6 +55,10 @@ public class Message {
                 body);
     }
 
+    public static Message createTaskSubmit(String requestId, String body) {
+        return new Message(MessageType.TASK_SUBMIT, requestId, body);
+    }
+
     public static Message createTaskResult(String requestId, String body) {
         return new Message(MessageType.TASK_RESULT, requestId, body);
     }
@@ -71,6 +75,7 @@ public class Message {
         msg.setRequestId(requestId);
         return msg;
     }
+
 
 
 }

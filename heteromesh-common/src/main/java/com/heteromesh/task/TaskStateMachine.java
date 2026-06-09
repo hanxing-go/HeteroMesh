@@ -25,7 +25,11 @@ public class TaskStateMachine {
                 TaskStatus.TIMEOUT, TaskStatus.CANCELED));
 
         ALLOWED_TRANSITIONS.put(TaskStatus.RUNNING,
-                EnumSet.of(TaskStatus.SUCCEEDED, TaskStatus.FAILED, TaskStatus.TIMEOUT, TaskStatus.CANCELED));
+                EnumSet.of(TaskStatus.SUCCEEDED,
+                        TaskStatus.FAILED,
+                        TaskStatus.TIMEOUT,
+                        TaskStatus.CANCELED,
+                        TaskStatus.DISPATCHING));
 
         ALLOWED_TRANSITIONS.put(TaskStatus.SUCCEEDED, EnumSet.noneOf(TaskStatus.class));
 

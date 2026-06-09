@@ -3,6 +3,7 @@ package com.heteromesh.controller;
 import com.heteromesh.config.ConfigLoader;
 import com.heteromesh.controller.node.DeadNodeDetector;
 import com.heteromesh.controller.node.NodeChannelMap;
+import com.heteromesh.controller.scheduler.TaskRetryPolicy;
 import com.heteromesh.controller.scheduler.TaskScheduler;
 import com.heteromesh.controller.task.TaskTimeoutManager;
 import com.heteromesh.loadbalancer.LoadBalancer;
@@ -80,6 +81,7 @@ public class HeteroMeshServer {
             TaskStore taskStore = new InMemoryTaskStore();
             TaskTimeoutManager taskTimeoutManager = new TaskTimeoutManager(taskStore);
             TaskScheduler scheduler = new TaskScheduler(taskStore, sr, loadBalancer, taskTimeoutManager);
+            TaskRetryPolicy retryPolicy = new TaskRetryPolicy(3);
 
             // 启动服务
             log.info("启动服务");
@@ -101,7 +103,7 @@ public class HeteroMeshServer {
                                     // 心跳处理
                                     new HeartbeatHandler(),
                                     // 2. 业务处理
-                                    new ServerHandler(sr, ncm, loadBalancer, pendingClients, scheduler, taskStore)
+                                    new ServerHandler(sr, ncm, loadBalancer, pendingClients, scheduler, taskStore, retryPolicy)
                             );
                         }
                     })

@@ -9,6 +9,9 @@ import com.heteromesh.task.TaskRequest;
 import com.heteromesh.task.TaskStatus;
 import com.heteromesh.task.TaskStore;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class TaskScheduler {
     private final TaskStore taskStore;
     private final ServiceRegistry serviceRegistry;
@@ -27,6 +30,7 @@ public class TaskScheduler {
         this.timeoutManager = timeoutManager;
     }
 
+    // 进行第一次调度
     public ScheduleResult schedule(TaskRequest request) {
         TaskMetadata task = taskStore.create(request);
         String taskId = task.getTaskId();
@@ -59,6 +63,47 @@ public class TaskScheduler {
         }
 
         //返回 success(task, worker)
+        return ScheduleResult.success(task, worker);
+    }
+
+    // Retry，重试调度
+            /*
+        * 1. taskStore.get(taskId)，不存在则返回 failure 或抛异常
+            2. 如果任务已经终态，不能 retry
+            3. 从 task.getAttemptedWorkers() 构造 excludedWorkers
+            4. 调用 loadBalancer.select(taskId, excludedWorkers)
+            5. 如果选不到 Worker，返回 failure
+            6. taskStore.updateStatus(taskId, DISPATCHING)
+            7. taskStore.assignWorker(taskId, worker.getNodeId())
+            8. taskStore.recordAttempt(taskId, worker.getNodeId())
+            9. 返回 ScheduleResult.success(task, worker)
+            * * */
+    public ScheduleResult retry(String taskId) {
+        // TODO:
+
+        TaskMetadata task = taskStore.get(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found" + taskId));
+
+        if (task.getStatus().isTerminal()) {
+            return ScheduleResult.failure(task, "Task is already terminal: " + taskId);
+        }
+        if (task.getStatus() != TaskStatus.RUNNING) {
+            return ScheduleResult.failure(task, "Task is not running, cannot retry: " + taskId);
+        }
+
+        Set<String> excludedWorkers = new HashSet<>(task.getAttemptedWorkers());
+        // 获得曾经尝试过的节点
+
+        ServiceInstance worker = loadBalancer.select(taskId, excludedWorkers);
+
+        if (worker ==  null) {
+            return ScheduleResult.failure(task, "No available retry worker");
+        }
+
+        taskStore.updateStatus(taskId, TaskStatus.DISPATCHING);
+        taskStore.assignWorker(taskId, worker.getNodeId());
+        taskStore.recordAttempt(taskId, worker.getNodeId());
+
         return ScheduleResult.success(task, worker);
     }
 }

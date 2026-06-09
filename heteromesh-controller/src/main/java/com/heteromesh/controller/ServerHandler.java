@@ -3,6 +3,7 @@ package com.heteromesh.controller;
 import com.google.gson.Gson;
 import com.heteromesh.controller.node.NodeChannelMap;
 import com.heteromesh.controller.scheduler.ScheduleResult;
+import com.heteromesh.controller.scheduler.TaskRetryPolicy;
 import com.heteromesh.controller.scheduler.TaskScheduler;
 import com.heteromesh.loadbalancer.LoadBalancer;
 import com.heteromesh.protocol.Message;
@@ -45,15 +46,34 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
     private final TaskScheduler taskScheduler;
     private final TaskStore taskStore;
 
+    /*重试机制*/
+    private final TaskRetryPolicy retryPolicy;
+
 
     public ServerHandler(ServiceRegistry registry, NodeChannelMap nodeChannelMap,
-                         LoadBalancer loadBalancer, Map<String, Channel> pendingClients, TaskScheduler taskScheduler, TaskStore taskStore) {
+                         LoadBalancer loadBalancer,
+                         Map<String, Channel> pendingClients,
+                         TaskScheduler taskScheduler,
+                         TaskStore taskStore) {
+        // 旧构造器，默认不启用重试
+        this(registry, nodeChannelMap, loadBalancer,
+                pendingClients, taskScheduler, taskStore, new TaskRetryPolicy(1));
+    }
+
+    public ServerHandler(ServiceRegistry registry, NodeChannelMap nodeChannelMap,
+                         LoadBalancer loadBalancer,
+                         Map<String, Channel> pendingClients,
+                         TaskScheduler taskScheduler,
+                         TaskStore taskStore,
+                         TaskRetryPolicy retryPolicy) {
         this.registry = registry;
         this.nodeChannelMap = nodeChannelMap;
         this.loadBalancer = loadBalancer;
         this.pendingClients = pendingClients;
         this.taskScheduler = taskScheduler;
         this.taskStore = taskStore;
+
+        this.retryPolicy = retryPolicy;
     }
 
     @Override
@@ -97,6 +117,8 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
                     System.currentTimeMillis(),
                     null
             );
+            taskStore.complete(failed.getTaskId(), failed);
+
             String replyBody = TaskPayloadCodec.encodeResult(failed);
 
 
@@ -143,27 +165,67 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
         TaskResult result = TaskPayloadCodec.decodeResult(message.getBody());
 
         // 先转换为running状态
-        TaskMetadata metadata = taskStore.get(result.getTaskId()).orElse(null);
-        if (metadata != null && metadata.getStatus() == TaskStatus.DISPATCHING) {
+        TaskMetadata task = taskStore.get(result.getTaskId()).orElse(null);
+        if (task != null && task.getStatus() == TaskStatus.DISPATCHING) {
             taskStore.updateStatus(result.getTaskId(), TaskStatus.RUNNING);
         }
 
-        try {
-            taskStore.complete(result.getTaskId(), result);
-        } catch (IllegalStateException e) {
-          log.warn("后到结果，不能覆盖终态: taskId={}, requestId={}",
-                  result.getTaskId(), message.getRequestId(), e);
-        } catch (Exception e) {
-            log.warn("更新任务结果失败: taskId={}, requestId={}",
-                    result.getTaskId(), message.getRequestId(), e);
+        TaskResult finalResult = result;
+        Message replyMessage = message;
+        // 先判断是否需要重试
+        if (task != null && retryPolicy.canRetry(task, result)) {
+            ScheduleResult retryResult = taskScheduler.retry(result.getTaskId());
+
+            if (retryResult.isSuccess()) {
+                String retryWorkerId = retryResult.getWorker().getNodeId();
+
+                Channel workerChannel = nodeChannelMap.getChannel(retryWorkerId);
+
+                if (workerChannel != null && workerChannel.isActive()) {
+                    TaskRequest request = retryResult.getTask().getRequest();
+
+                    Message retryMessage = Message.createTaskSubmit(
+                            message.getRequestId(),
+                            TaskPayloadCodec.encodeRequest(request)
+                    );
+
+                    workerChannel.writeAndFlush(retryMessage);
+                    return;
+                }
+
+                finalResult = new TaskResult(
+                        result.getTaskId(),
+                        TaskStatus.FAILED,
+                        null,
+                        "Retry worker channel is not available: " + retryWorkerId,
+                        result.getStartedAt(),
+                        System.currentTimeMillis(),
+                        retryWorkerId
+                );
+
+                replyMessage = Message.createTaskResult(
+                        message.getRequestId(),
+                        TaskPayloadCodec.encodeResult(finalResult)
+                );
+            }
         }
 
-        Channel clientChannel = pendingClients.remove(message.getRequestId());
+        try {
+            taskStore.complete(finalResult.getTaskId(), finalResult);
+        } catch (IllegalStateException e) {
+          log.warn("后到结果，不能覆盖终态: taskId={}, requestId={}",
+                  finalResult.getTaskId(),replyMessage.getRequestId(), e);
+        } catch (Exception e) {
+            log.warn("更新任务结果失败: taskId={}, requestId={}",
+                    finalResult.getTaskId(), replyMessage.getRequestId(), e);
+        }
+
+        Channel clientChannel = pendingClients.remove(replyMessage.getRequestId());
 
         if (clientChannel != null && clientChannel.isActive()) {
-            clientChannel.writeAndFlush(message);
+            clientChannel.writeAndFlush(replyMessage);
         } else {
-            log.warn("找不到任务提交方: requestId={}", message.getRequestId());
+            log.warn("找不到任务提交方: requestId={}", replyMessage.getRequestId());
         }
     }
 
