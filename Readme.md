@@ -1,14 +1,48 @@
 # HeteroMesh
 
-HeteroMesh 是一个从零实现的 Java 分布式 RPC 与节点调度学习项目。当前版本已经完成自定义二进制协议、Netty 长连接、SPI 插件加载、序列化策略路由、节点注册与心跳、四种负载均衡、动态代理 RPC、超时清理、重试、熔断和基础限流组件。
+HeteroMesh 是一个从零实现的 Java 分布式执行 Runtime 学习项目。
 
-项目的长期目标是演进为“异构 GPU 集群推理调度系统”。当前更准确的定位是：
+新的项目定位是：
 
-> 一个可运行、可测试、可继续扩展的自研 RPC 框架 + Controller/Worker 节点路由原型。
+> 面向 AI / Agent 任务的分布式执行与调度 Runtime 后端底座。
+
+它不是一个 LangChain / CrewAI 这类 Agent 应用编排框架，也不是一个完整的大模型推理引擎。HeteroMesh 的重点是 Agent 或 AI 任务在真实系统中需要的后端基础设施：
+
+- 自定义 RPC 通信
+- Controller / Worker 节点治理
+- 任务生命周期管理
+- 调度、重试、超时、取消、终态保护
+- 异构 Worker 资源上报与匹配
+- Worker 执行队列、背压和故障转移
+- HTTP / SSE 对外 API
+- 指标、日志、压测和可观测性
+- 轻量 LLM / Tool 任务接入，用来证明系统可以承载 Agent 执行
+
+一句话：
+
+```text
+Agent 框架负责“想清楚下一步做什么”，HeteroMesh 负责“把这一步稳定地调度、执行、回收和观测”。
+```
+
+## 为什么和 AI Agent 有关
+
+一个真实 Agent 不只是 prompt 和多轮对话。它通常还需要：
+
+- 调用工具
+- 执行代码
+- 访问文件或外部服务
+- 并发运行多个步骤
+- 处理超时、失败、重试和取消
+- 保存每一步状态
+- 流式返回执行过程
+- 控制 Worker 资源和执行权限
+- 记录 trace、指标和错误
+
+这些能力本质上是后端 Runtime 能力。HeteroMesh 当前的 RPC、任务调度、节点注册、心跳、负载均衡和容错机制，正是这类 Runtime 的底层骨架。
 
 ## 当前状态
 
-最后验证时间：2026-06-04
+历史验证记录：2026-06-04
 
 ```text
 mvn test
@@ -16,131 +50,100 @@ BUILD SUCCESS
 Tests run: 193, Failures: 0, Errors: 0, Skipped: 0
 ```
 
-已完成：
+当前已完成或已有基础实现：
 
 | 能力 | 当前实现 |
 |------|----------|
 | 自定义协议 | 11 字节固定头：Magic(4) + Version(1) + SerializerCode(1) + Type(1) + Length(4) |
-| 网络通信 | Netty Server/Client，LengthFieldBasedFrameDecoder 处理半包/粘包 |
-| 序列化 | JSON(Gson) + Binary，两者通过 SPI 加载 |
+| 网络通信 | Netty Server / Client，LengthFieldBasedFrameDecoder 处理半包和粘包 |
+| 序列化 | JSON(Gson) + Binary，通过 SPI 加载 |
 | 序列化路由 | 按 MessageType 从 YAML 选择序列化器 |
 | 注册中心 | Worker 主动 REGISTER，Controller 维护 ServiceInstance |
 | 心跳与下线 | IdleStateHandler + HeartbeatHandler + DeadNodeDetector |
 | 负载均衡 | consistentHash / random / roundRobin / weighted，支持 SPI 切换 |
 | RPC 调用 | JDK 动态代理 + RpcInvocation + RpcDispatcher + RpcFuture |
-| 容错 | Controller 转发重试、失败节点排除、三态熔断器 |
-| 限流 | TokenBucketRateLimiter、SlidingWindowRateLimiter 已实现，尚未接入主链路 |
-| 测试 | 单元测试、集成测试、基础压力测试，共 193 个测试通过 |
+| RPC 容错雏形 | Controller 转发重试、失败节点排除、三态熔断器 |
+| 限流组件 | TokenBucketRateLimiter、SlidingWindowRateLimiter 已实现，仍需接入主链路 |
+| 任务模型 | TaskRequest、TaskResult、TaskStatus、TaskMetadata |
+| 任务仓库 | InMemoryTaskStore，支持创建、查询、状态更新、结果写回 |
+| 任务调度 | TaskScheduler、ScheduleResult，支持首次调度和重试调度雏形 |
+| Worker 执行 | TaskExecutor、DefaultTaskExecutor，已能执行轻量 demo 任务并返回结果 |
+| 任务查询 | TaskQueryService、TaskDetailView、TaskSummaryView |
+| 任务超时 | TaskTimeoutManager，支持任务超时终态保护雏形 |
 
-规划中，尚未完成：
+仍未完成或需要增强：
 
 | 能力 | 状态 |
 |------|------|
-| HTTP REST API | 未实现 |
-| Dashboard / WebSocket 监控 | 未实现 |
-| 真实 GPU 推理执行器 | 未实现 |
-| 任务状态机与任务调度器 | 未实现 |
-| ChannelPool 连接池 | 未实现 |
-| Kryo 序列化器 | 未实现 |
-| Docker Compose 集群部署 | 未实现 |
+| Controller HTTP API | 未实现 |
+| SSE / WebSocket 流式事件 | 未实现 |
+| AgentRun / AgentStep / ToolCall 模型 | 未实现 |
+| LLM / Tool 执行器 | 未实现 |
+| Worker 本地队列与背压 | 未实现 |
+| 资源感知调度 | 未实现 |
+| 持久化 TaskStore | 未实现 |
+| 指标系统与压测报告 | 未实现 |
+| Docker Compose 多节点部署 | 未实现 |
+| Dashboard | 未实现 |
 
-## 架构图
-
-### 当前运行架构
+## 当前架构
 
 ```mermaid
 flowchart LR
-    client["RPC Client / DemoClient"] -->|"TASK_REQUEST<br/>自定义二进制协议"| controller["Controller<br/>HeteroMeshServer"]
+    client["Client / DemoClient"] -->|"RPC_REQUEST or TASK_SUBMIT"| controller["Controller<br/>HeteroMeshServer"]
 
     worker1["Worker A<br/>WorkerClient"] -->|"REGISTER / PING"| controller
     worker2["Worker B<br/>WorkerClient"] -->|"REGISTER / PING"| controller
     worker3["Worker C<br/>WorkerClient"] -->|"REGISTER / PING"| controller
 
-    controller -->|"选择 Worker<br/>LB + 熔断 + 重试"| worker1
-    controller -->|"选择 Worker"| worker2
-    controller -->|"选择 Worker"| worker3
+    controller -->|"LB + retry + failover"| worker1
+    controller -->|"route task"| worker2
+    controller -->|"route task"| worker3
 
-    worker1 -->|"TASK_RESPONSE"| controller
-    worker2 -->|"TASK_RESPONSE"| controller
-    worker3 -->|"TASK_RESPONSE"| controller
-    controller -->|"回传响应"| client
+    worker1 -->|"TASK_RESULT / RPC_RESPONSE"| controller
+    worker2 -->|"TASK_RESULT / RPC_RESPONSE"| controller
+    worker3 -->|"TASK_RESULT / RPC_RESPONSE"| controller
+    controller -->|"response / result"| client
 ```
 
-### 代码模块关系
+## 目标架构
 
 ```mermaid
 flowchart TB
-    root["HeteroMesh Parent POM"]
+    api["HTTP / SSE API"] --> runtime["Controller<br/>Agent / Task Runtime"]
 
-    root --> common["heteromesh-common"]
-    root --> controller["heteromesh-controller"]
-    root --> worker["heteromesh-worker"]
+    runtime --> taskStore["TaskStore<br/>state + result"]
+    runtime --> scheduler["Resource-aware Scheduler"]
+    runtime --> metrics["Metrics / Trace"]
 
-    common --> protocol["protocol<br/>Message / Encoder / Decoder"]
-    common --> serializer["serializer<br/>JSON / Binary / Router / SPI"]
-    common --> registry["registry<br/>ServiceRegistry / ServiceInstance"]
-    common --> lb["loadbalancer<br/>ConsistentHash / Random / RoundRobin / Weighted"]
-    common --> rpc["rpc<br/>Proxy / Future / Dispatcher / Interceptor / CircuitBreaker / RateLimiter"]
-    common --> transport["transport<br/>RpcClient / Heartbeat / ExceptionHandler"]
-    common --> config["config<br/>YAML ConfigLoader"]
+    scheduler --> rpc["Custom RPC Transport"]
 
-    controller --> server["HeteroMeshServer"]
-    controller --> handler["ServerHandler<br/>注册 / 转发 / 回传 / 重试 / 熔断"]
-    controller --> node["node<br/>NodeChannelMap / DeadNodeDetector"]
+    rpc --> workerA["Worker A<br/>LLM task"]
+    rpc --> workerB["Worker B<br/>Tool task"]
+    rpc --> workerC["Worker C<br/>Code / shell task"]
 
-    worker --> workerClient["WorkerClient"]
-    worker --> clientHandler["ClientHandler<br/>注册 ACK / RPC Dispatch"]
-    worker --> demo["demo<br/>TaskService / DemoClient / DemoServer"]
+    workerA --> rpc
+    workerB --> rpc
+    workerC --> rpc
 
-    controller -.依赖.-> common
-    worker -.依赖.-> common
+    rpc --> runtime
 ```
 
-### RPC 调用链路
+## RPC 与 Agent Runtime 的分层
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant RC as RpcProxy/RpcClient
-    participant CT as Controller
-    participant LB as LoadBalancer
-    participant W as Worker
-    participant D as RpcDispatcher
+```text
+RPC 层：
+  解决一次远程调用如何发出去、如何匹配响应、如何超时和清理。
 
-    W->>CT: REGISTER(ServiceInstance)
-    CT-->>W: REGISTER_ACK
-    C->>RC: service.method(args)
-    RC->>CT: TASK_REQUEST(requestId, RpcRequest)
-    CT->>LB: select(requestId, failedNodes)
-    LB-->>CT: ServiceInstance
-    CT->>W: TASK_REQUEST
-    W->>D: dispatch(RpcInvocation)
-    D-->>W: result
-    W->>CT: TASK_RESPONSE(requestId, RpcResponse)
-    CT->>RC: TASK_RESPONSE
-    RC-->>C: return result
+Task Runtime 层：
+  解决一个任务从提交、调度、执行、回收、查询到失败恢复的生命周期。
+
+Agent Runtime 层：
+  解决一个 Agent run 拆成多个 step，每个 step 可能调用 LLM、工具、代码执行或外部服务。
+
+HeteroMesh 当前已经有 RPC 层和 Task Runtime 雏形。
+后续只需要轻量接入 AgentRun / AgentStep / ToolCall，就能把项目和 AI Agent 岗位连接起来。
 ```
-
-## 协议设计
-
-HeteroMesh 使用固定头 + 可变体的自定义二进制协议。
-
-| 字段 | 长度 | 说明 |
-|------|------|------|
-| Magic | 4 bytes | 固定魔数 `0xCAFEBABE` |
-| Version | 1 byte | 协议版本，当前 `0x01` |
-| SerializerCode | 1 byte | `json` 或 `binary` |
-| Type | 1 byte | PING / PONG / REGISTER / TASK_REQUEST 等 |
-| Length | 4 bytes | Body 长度 |
-| Body | N bytes | 序列化后的 Message |
-
-当前消息类型：
-
-| MessageType | 说明 |
-|-------------|------|
-| PING / PONG | 心跳 |
-| REGISTER / REGISTER_ACK | Worker 注册与确认 |
-| TASK_REQUEST / TASK_RESPONSE | RPC 请求与响应 |
 
 ## 技术栈
 
@@ -155,48 +158,19 @@ HeteroMesh 使用固定头 + 可变体的自定义二进制协议。
 | 测试 | JUnit 5、Netty EmbeddedChannel、集成测试 |
 | 扩展机制 | 自研 `@SPI` + `META-INF/services` |
 
-## 模块结构
-
-```text
-HeteroMesh
-├── pom.xml
-├── heteromesh-common
-│   └── src/main/java/com/heteromesh
-│       ├── config
-│       ├── loadbalancer
-│       ├── protocol
-│       ├── registry
-│       ├── rpc
-│       ├── serializer
-│       ├── spi
-│       └── transport
-├── heteromesh-controller
-│   └── src/main/java/com/heteromesh/controller
-│       ├── HeteroMeshServer.java
-│       ├── ServerHandler.java
-│       ├── CircuitBreakerManager.java
-│       └── node
-└── heteromesh-worker
-    └── src/main/java/com/heteromesh
-        ├── worker
-        └── demo
-```
-
 ## 快速开始
 
 ### 环境要求
 
 - JDK 21
 - Maven 3.9+
-- Windows / macOS / Linux 均可
+- Windows / macOS / Linux
 
 ### 编译和测试
 
 ```bash
 mvn clean test
 ```
-
-如果使用 IntelliJ IDEA 自带 Maven，也可以在 IDEA Maven 面板运行 `test` 生命周期。
 
 ### 运行指定测试
 
@@ -214,55 +188,47 @@ mvn test -pl heteromesh-worker -Dtest=StressTest
 mvn test -pl heteromesh-common -Dtest=ProtocolBenchmark
 ```
 
-## 核心设计亮点
-
-1. **自定义二进制协议**  
-   不依赖 HTTP/gRPC，使用固定协议头承载序列化方式、消息类型和 body 长度。
-
-2. **SPI 插件化**  
-   序列化器和负载均衡器都通过 `@SPI` 与 `META-INF/services` 加载，支持配置切换。
-
-3. **策略化负载均衡**  
-   已实现一致性哈希、随机、轮询、加权四种策略。一致性哈希使用 `TreeMap` 哈希环和 150 个虚拟节点。
-
-4. **异步 RPC 模型**  
-   使用 `requestId + CompletableFuture` 匹配响应，避免阻塞 Netty I/O 线程。
-
-5. **动态代理调用体验**  
-   `RpcProxy` 使用 JDK Proxy，把接口方法调用转成 `RpcInvocation`，由 Worker 端反射执行。
-
-6. **Controller/Worker 主动注册模型**  
-   Worker 主动连 Controller 并注册，适合 Worker 在 NAT 后方的场景。
-
-7. **容错链路初具雏形**  
-   Controller 支持失败节点排除、有限重试、请求超时检测和三态熔断。
-
 ## 后续路线
 
-下一阶段应优先把项目从“RPC 路由原型”推进成“任务调度系统”。
+近期主线不是做复杂 Agent 应用，而是把 HeteroMesh 做成能支撑 Agent 执行的后端底座。
 
-| 优先级 | 任务 | 目标 |
-|--------|------|------|
-| P0 | 协议防御增强 | 校验 magic/version/type/length，补非法包测试 |
-| P0 | README 与实现持续对齐 | 避免把规划能力写成已完成 |
-| P1 | 任务模型 | 新增 TaskRequest、TaskResult、TaskStatus、TaskMetadata |
-| P1 | Controller 调度器 | 从 ServerHandler 中拆出 TaskScheduler |
-| P1 | Worker 执行器 | 增加本地任务队列、执行线程池、状态回传 |
-| P2 | HTTP API | 支持提交任务、查询任务、查看节点 |
-| P2 | 可观测性 | 统计 QPS、平均延迟、P95/P99、成功率 |
-| P2 | 异构调度 | 根据 gpuType、vramFree、load、weight 路由任务 |
-| P3 | Dashboard / Docker / 真实推理 | 作为展示与部署增强 |
+| 阶段 | 目标 | 重点产出 |
+|------|------|----------|
+| 阶段一 | 任务调度闭环打磨 | 结果回收、查询、超时、取消、终态保护、任务级重试 |
+| 阶段二 | RPC 与连接治理补强 | pending 清理、断线重连、错误码、限流熔断接入主链路 |
+| 阶段三 | 异构 Worker 调度 | 资源上报、资源匹配、Worker 队列、背压 |
+| 阶段四 | 对外 API 与流式事件 | HTTP API、SSE、任务事件流、Worker 查询 |
+| 阶段五 | 轻量 AI / Agent 场景 | LLM_TASK、TOOL_TASK、简单 ToolRegistry |
+| 阶段六 | 可观测性与工程化 | Metrics、trace、压测报告、Docker Compose、最终 README |
 
-## 参考项目
+## 面试定位
 
-HeteroMesh 是教学项目，不直接对标工业级产品，但借鉴了以下项目的设计思想：
+简历上建议这样描述：
 
-| 领域 | 项目 | 借鉴点 |
+```text
+HeteroMesh 是一个面向 AI / Agent 任务的分布式执行 Runtime。我从零实现了自定义 RPC 协议、Netty 长连接通信、Controller / Worker 节点治理、任务状态机、调度器、超时取消、任务级重试、故障转移和基础限流熔断。项目后续将接入资源感知调度、Worker 背压、HTTP/SSE API、指标系统和轻量 LLM/Tool 任务，用于支撑 Agent 执行链路。
+```
+
+面试时要讲清楚：
+
+- RPC 如何设计，为什么需要 requestId
+- 任务状态机如何保证合法流转
+- Controller 如何维护 Worker 注册、心跳和下线
+- 调度器如何选择 Worker
+- 超时、取消、重试、后到结果如何处理
+- Worker 满载时如何背压
+- Agent step / tool call 为什么可以被抽象成分布式任务
+- 项目目前还不是工业级 Agent 平台，差距在持久化、权限隔离、观测、评测和真实工具生态
+
+## 参考方向
+
+HeteroMesh 不直接对标工业级项目，但借鉴这些系统的思想：
+
+| 方向 | 项目 | 参考点 |
 |------|------|--------|
-| RPC | Apache Dubbo | SPI、服务注册发现、负载均衡、RPC 调用模型 |
-| RPC | SOFARPC | 拦截器链、连接管理、容错策略 |
-| 分布式调度 | XXL-JOB | Controller/Worker 架构、任务路由、心跳维护 |
-| 注册中心 | Nacos | 服务实例模型、健康检查 |
-| 熔断限流 | Sentinel | 熔断状态机、滑动窗口、令牌桶思想 |
-| 网络通信 | Netty | Pipeline、编解码器、长连接通信 |
-| 推理调度 | vLLM | Worker 管理和推理调度思路 |
+| RPC | Apache Dubbo / SOFARPC | SPI、服务注册发现、负载均衡、调用链治理 |
+| 分布式调度 | XXL-JOB / PowerJob | Controller / Worker、任务路由、执行状态回收 |
+| 熔断限流 | Sentinel | 熔断状态机、滑动窗口、令牌桶 |
+| 分布式计算 | Ray | Task / Actor、资源调度、Worker 管理 |
+| Agent Runtime | LangGraph / OpenHands / Dify | Agent step、工具执行、状态、流式事件、观测 |
+| 推理调度 | vLLM | Worker 管理、资源利用、吞吐和延迟优化 |

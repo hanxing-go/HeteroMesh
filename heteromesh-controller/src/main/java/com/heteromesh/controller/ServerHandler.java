@@ -117,7 +117,6 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
                     System.currentTimeMillis(),
                     null
             );
-            taskStore.complete(failed.getTaskId(), failed);
 
             String replyBody = TaskPayloadCodec.encodeResult(failed);
 
@@ -142,6 +141,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
                     System.currentTimeMillis(),
                     result.getWorker().getNodeId()
             );
+            taskStore.complete(failed.getTaskId(), failed);
 
             Message reply = Message.createTaskResult(
                     message.getRequestId(),
